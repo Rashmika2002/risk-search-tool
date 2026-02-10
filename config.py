@@ -31,7 +31,7 @@ ONEDRIVE_CONFIG = {
 # ============================================================================
 
 GITHUB_CONFIG = {
-    "repo_owner": "yourcompany",  # Your GitHub username/organization
+    "repo_owner": "Rashmika2002",  # Your GitHub username/organization
     "repo_name": "risk-search-tool",  # Repository name
     "branch": "main",  # Branch to pull from
     "auto_update": True,  # Auto-download updates on launch
