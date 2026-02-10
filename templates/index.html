@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk Search Tool</title>
+    <link rel='stylesheet' href = '../static/style.css' type="text/css">     
+</link>
+
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+             <h1>🔍 Risk Search Tool</h1>
+            <p>Comprehensive company risk screening with 32 high-risk keywords</p>
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Company Logo" class="header-logo">
+</div>
+        <!-- Statistics -->
+        <div class="stats">
+            <div class="stat-card">
+            <h3 id="totalRecords">-</h3>
+            <p>Total Searches</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="sessionSearches">0</h3>
+            <p>This Session</p>
+        </div>
+        </div>
+
+        <!-- Main Search Card -->
+        <div class="main-card">
+            <div class="input-section">
+                <h2>📋 Enter Company Names</h2>
+                
+                <div class="alert" id="alertBox"></div>
+                
+                <div class="input-group">
+                    <label for="clientNames">Company/Client Names (separate with commas)</label>
+                    <input 
+                        type="text" 
+                        id="clientNames" 
+                        placeholder="e.g., HNBA, Celinco Life, Vallibel Finance"
+                        autofocus
+                    >
+                </div>
+
+                <button class="btn" onclick="performSearch()">🔍 Generate Search Links</button>
+                <button class="btn btn-secondary" onclick="downloadExcel()">📥 Download Excel</button>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 10px; color: #666;">Processing searches...</p>
+            </div>
+
+            <div class="results" id="results">
+                <h2>✅ Search Results</h2>
+                <div id="resultsList"></div>
+            </div>
+        </div>
+
+        <!-- Recent Searches -->
+        <div class="recent-searches">
+            <h2>📊 Recent Searches</h2>
+            
+            {% if recent_searches %}
+            <table class="search-table">
+                <thead>
+                    <tr>
+                        <th>Client Name</th>
+                        <th>Date</th>
+                        <th>Username</th>
+                        <th>Search Link</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for search in recent_searches %}
+                    <tr>
+                        <td>{{ search.client_name }}</td>
+                        <td>{{ search.report_date }}</td>
+                        <td>{{ search.username }}</td>
+                        <td><a href="{{ search.search_url }}" target="_blank">🔗 Open Search</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: #666; text-align: center; padding: 20px;">No searches yet. Start by entering company names above.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+    let sessionSearches = 0;
+
+    // Wait for page to fully load
+    window.addEventListener('DOMContentLoaded', function() {
+        // Fetch stats
+        fetchStats();
+        
+        // Add Enter key listener
+        const clientInput = document.getElementById('clientNames');
+        if (clientInput) {
+            clientInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+        }
+    });
+
+    function fetchStats() {
+        fetch('/stats')
+            .then(response => response.json())
+            .then(data => {
+                const el = document.getElementById('totalRecords');
+                if (el) el.textContent = data.total_records;
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+   function performSearch() {
+    const clientNamesInput = document.getElementById('clientNames');
+    if (!clientNamesInput) {
+        console.error('clientNames input not found');
+        return;
+    }
+    
+    const clientNames = clientNamesInput.value.trim();
+    
+    if (!clientNames) {
+        showAlert('Please enter at least one company name', 'error');
+        return;
+    }
+
+    // Show loading
+    const loadingEl = document.getElementById('loading');
+    const resultsEl = document.getElementById('results');
+    if (loadingEl) loadingEl.classList.add('show');
+    if (resultsEl) resultsEl.classList.remove('show');
+    hideAlert();
+
+    // Send request
+    fetch('/search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ clients: clientNames })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Hide loading
+        if (loadingEl) loadingEl.classList.remove('show');
+        
+        if (data.success) {
+            showAlert(data.message, 'success');
+            displayResults(data.results);
+            
+            // Update stats - SAFE VERSION
+            sessionSearches += data.results.length;
+            
+            const sessionEl = document.getElementById('sessionSearches');
+            if (sessionEl) {
+                sessionEl.textContent = sessionSearches;
+            }
+            
+            const totalEl = document.getElementById('totalRecords');
+            if (totalEl) {
+                totalEl.textContent = data.total_records;
+            }
+            
+            // Clear input
+            if (clientNamesInput) {
+                clientNamesInput.value = '';
+            }
+            
+            // Open search links
+            data.results.forEach((result, index) => {
+                setTimeout(() => {
+                    window.open(result.search_url, '_blank');
+                }, index * 500);
+            });
+            
+            // Reload page after 2 seconds
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            showAlert(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        if (loadingEl) loadingEl.classList.remove('show');
+        showAlert('Error: ' + error.message, 'error');
+        console.error('Search error:', error);
+    });
+}
+    function displayResults(results) {
+        const resultsList = document.getElementById('resultsList');
+        if (!resultsList) return;
+        
+        resultsList.innerHTML = '';
+        
+        results.forEach(result => {
+            const div = document.createElement('div');
+            div.className = 'result-item';
+            div.innerHTML = `
+                <h4>✓ ${result.client_name}</h4>
+                <p><strong>Date:</strong> ${result.report_date}</p>
+                <p><strong>Search Link:</strong> <a href="${result.search_url}" target="_blank">${result.search_url}</a></p>
+                <p><strong>Status:</strong> ${result.status}</p>
+            `;
+            resultsList.appendChild(div);
+        });
+        
+        document.getElementById('results').classList.add('show');
+    }
+
+    function showAlert(message, type) {
+        const alertBox = document.getElementById('alertBox');
+        if (alertBox) {
+            alertBox.textContent = message;
+            alertBox.className = 'alert alert-' + type + ' show';
+        }
+    }
+
+    function hideAlert() {
+        const alertBox = document.getElementById('alertBox');
+        if (alertBox) {
+            alertBox.classList.remove('show');
+        }
+    }
+
+    function downloadExcel() {
+        window.location.href = '/download';
+    }
+
+    </script>
+</body>
+</html>
