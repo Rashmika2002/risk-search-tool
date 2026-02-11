@@ -2,11 +2,10 @@
 Cloud Synchronization Module
 Handles OneDrive Excel file downloads and uploads
 """
-
+import os
 import requests
 import openpyxl
 import json
-import os
 from datetime import datetime, timedelta
 from config import ONEDRIVE_CONFIG, LOCAL_FILES, EXCEL_HEADERS
 
@@ -16,7 +15,9 @@ class CloudSync:
     
     def __init__(self):
         self.cache_duration = timedelta(hours=ONEDRIVE_CONFIG['cache_duration_hours'])
-        self.offline_mode = ONEDRIVE_CONFIG['offline_mode']
+        self.offline_mode = ONEDRIVE_CONFIG.get('offline_mode', False)
+        self.use_sync_folder = ONEDRIVE_CONFIG.get('use_sync_folder', False)
+        self.sync_folder = ONEDRIVE_CONFIG.get('sync_folder', '')
     
     def _is_cache_valid(self, filepath):
         """Check if cached file is still valid"""
@@ -53,39 +54,40 @@ class CloudSync:
         return False
     
     def get_keywords(self):
-        """
-        Get keywords from OneDrive Excel
-        Returns list of active keywords
-        """
-        keywords_file = LOCAL_FILES['keywords']
+        """Get keywords from OneDrive Excel"""
+    
+    # If using OneDrive sync folder, read directly
+        if self.use_sync_folder and self.sync_folder:
+            keywords_file = os.path.join(self.sync_folder, 'keywords.xlsx')
+        else:
+            keywords_file = LOCAL_FILES['keywords']
         
-        # Try to download fresh copy
+        # Try to download if not using sync folder
         if not self._is_cache_valid(keywords_file):
-            url = ONEDRIVE_CONFIG['keywords_url']
-            if url and url != "YOUR_ONEDRIVE_KEYWORDS_DIRECT_LINK":
+            url = ONEDRIVE_CONFIG.get('keywords_url')
+            if url:
                 self._download_file(url, keywords_file)
-        
-        # Read keywords from cache
+    
+    # Read keywords from file
         if os.path.exists(keywords_file):
             try:
-                wb = openpyxl.load_workbook(keywords_file)
+                wb = openpyxl.load_workbook(keywords_file, read_only=True, data_only=True)
                 ws = wb.active
-                
+            
                 keywords = []
                 for row in ws.iter_rows(min_row=2, values_only=True):
                     if row[2]:  # Active column = TRUE
                         keywords.append(row[1])  # Keyword column
-                
-                print(f"📋 Loaded {len(keywords)} keywords from cloud")
-                return keywords
             
+                print(f"📋 Loaded {len(keywords)} keywords from OneDrive")
+                return keywords
+        
             except Exception as e:
                 print(f"❌ Error reading keywords: {str(e)}")
-        
-        # Fallback to default keywords if offline
-        if self.offline_mode:
-            print("⚠️  Using default keywords (offline mode)")
-            return self._get_default_keywords()
+    
+    # Fallback
+        print("⚠️  Using default keywords (offline mode)")
+        return self._get_default_keywords()
         
         return []
     
@@ -107,32 +109,26 @@ class CloudSync:
         ]
     
     def append_search_record(self, record_data):
-        """
-        Append search record to master records file
-        
-        Args:
-            record_data: dict with keys: client_name, report_date, username, 
-                        search_url, status, keywords_used, app_version
-        """
-        records_file = LOCAL_FILES['master_records']
-        
-        # Download latest version first
-        url = ONEDRIVE_CONFIG['master_records_url']
-        if url and url != "YOUR_ONEDRIVE_MASTER_RECORDS_DIRECT_LINK":
-            self._download_file(url, records_file)
-        
-        # Create file if doesn't exist
+        """Append search record to master records file"""
+    
+    # Determine which file to use
+        if self.use_sync_folder and self.sync_folder:
+            records_file = os.path.join(self.sync_folder, 'master_records.xlsx')
+        else:
+            records_file = LOCAL_FILES['master_records']
+    
+    # Create file if doesn't exist
         if not os.path.exists(records_file):
             self._create_master_records_file(records_file)
-        
-        # Append record
+    
+    # Append record
         try:
             wb = openpyxl.load_workbook(records_file)
             ws = wb.active
-            
+        
             next_row = ws.max_row + 1
             next_id = next_row - 1
-            
+        
             ws.cell(row=next_row, column=1).value = next_id
             ws.cell(row=next_row, column=2).value = record_data['client_name']
             ws.cell(row=next_row, column=3).value = record_data['report_date']
@@ -144,14 +140,51 @@ class CloudSync:
             
             wb.save(records_file)
             print(f"✅ Record saved (ID: {next_id})")
-            
-            # Note: Manual sync to OneDrive via desktop app or Graph API
             return next_id
-        
+    
         except Exception as e:
             print(f"❌ Error saving record: {str(e)}")
             return None
-    
+    def get_all_searches(self):
+        """Get ALL searches from master records (not just recent)"""
+        
+        # Determine which file to use
+        if self.use_sync_folder and self.sync_folder:
+            sync_folder = self.sync_folder.replace('\\', '/')
+            records_file = f"{sync_folder}/master_records.xlsx"
+        else:
+            records_file = LOCAL_FILES['master_records']
+        
+        if not os.path.exists(records_file):
+            return []
+        
+        try:
+            wb = openpyxl.load_workbook(records_file, read_only=True, data_only=True)
+            ws = wb.active
+            
+            searches = []
+            
+            # Read all rows (skip header)
+            for row in range(2, ws.max_row + 1):
+                searches.append({
+                    'id': ws.cell(row=row, column=1).value,
+                    'client_name': ws.cell(row=row, column=2).value,
+                    'report_date': ws.cell(row=row, column=3).value,
+                    'username': ws.cell(row=row, column=4).value,
+                    'search_url': ws.cell(row=row, column=5).value,
+                    'status': ws.cell(row=row, column=6).value,
+                    'keywords_used': ws.cell(row=row, column=7).value,
+                    'app_version': ws.cell(row=row, column=8).value
+                })
+            
+            wb.close()
+            print(f"📊 Loaded {len(searches)} total searches")
+            return searches
+        
+        except Exception as e:
+            print(f"❌ Error reading all searches: {str(e)}")
+            return []
+            
     def _create_master_records_file(self, filepath):
         """Create new master records Excel file"""
         wb = openpyxl.Workbook()
@@ -167,24 +200,31 @@ class CloudSync:
     
     def get_recent_searches(self, limit=10):
         """Get recent searches from master records"""
-        records_file = LOCAL_FILES['master_records']
-        
-        # Try to download fresh copy
-        url = ONEDRIVE_CONFIG['master_records_url']
-        if url and url != "YOUR_ONEDRIVE_MASTER_RECORDS_DIRECT_LINK":
-            self._download_file(url, records_file)
-        
+    
+    # If using OneDrive sync folder, read directly
+        if self.use_sync_folder and self.sync_folder:
+            records_file = os.path.join(self.sync_folder, 'master_records.xlsx')
+            print(f"📂 Reading from sync folder: {records_file}")  # DEBUG
+        else:
+            records_file = LOCAL_FILES['master_records']
+            print(f"📂 Reading from cache: {records_file}")  # DEBUG
+    
+        print(f"📄 File exists: {os.path.exists(records_file)}")  # DEBUG
+    
         if not os.path.exists(records_file):
+            print("⚠️ Master records file not found!")  # DEBUG
             return []
-        
+    
         try:
             wb = openpyxl.load_workbook(records_file)
             ws = wb.active
-            
-            searches = []
+        
             max_row = ws.max_row
+            print(f"📊 Total rows in Excel: {max_row}")  # DEBUG
+        
+            searches = []
             start_row = max(2, max_row - limit + 1)
-            
+        
             for row in range(max_row, start_row - 1, -1):
                 if row > 1:
                     searches.append({
@@ -197,20 +237,27 @@ class CloudSync:
                         'keywords_used': ws.cell(row=row, column=7).value,
                         'app_version': ws.cell(row=row, column=8).value
                     })
-            
-            return searches
         
+            print(f"✅ Loaded {len(searches)} recent searches")  # DEBUG
+            return searches
+    
         except Exception as e:
             print(f"❌ Error reading recent searches: {str(e)}")
-            return []
+        return []
+    # Rest of method stays the same...
     
     def get_total_records(self):
         """Get total number of records"""
-        records_file = LOCAL_FILES['master_records']
-        
+    
+    # If using OneDrive sync folder, read directly
+        if self.use_sync_folder and self.sync_folder:
+            records_file = os.path.join(self.sync_folder, 'master_records.xlsx')
+        else:
+            records_file = LOCAL_FILES['master_records']
+    
         if not os.path.exists(records_file):
             return 0
-        
+    
         try:
             wb = openpyxl.load_workbook(records_file)
             ws = wb.active

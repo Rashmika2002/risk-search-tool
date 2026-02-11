@@ -7,6 +7,7 @@ import urllib.parse
 from datetime import datetime
 import getpass
 import sys
+import os
 
 # Import cloud modules
 from cloud_sync import CloudSync
@@ -37,20 +38,24 @@ def create_single_search_url(company_name, keywords):
     
     return url
 
-
 @app.route('/')
 def index():
     """Main page"""
-    # Get keywords from cloud
-    keywords = cloud.get_keywords()
+    import getpass
     
-    # Get recent searches from cloud
+    keywords = cloud.get_keywords()
     recent_searches = cloud.get_recent_searches(10)
+    
+    # Count user's searches
+    username = getpass.getuser()
+    all_searches = cloud.get_all_searches()
+    my_search_count = len([s for s in all_searches if s.get('username') == username])
     
     return render_template('index.html', 
                          total_keywords=len(keywords),
                          recent_searches=recent_searches,
-                         app_version=APP_CONFIG['current_version'])
+                         app_version=APP_CONFIG['current_version'],
+                         my_search_count=my_search_count)
 
 
 @app.route('/search', methods=['POST'])
@@ -116,7 +121,89 @@ def download():
         return send_file(records_file, as_attachment=True)
     else:
         return "No records found", 404
-
+    
+@app.route('/download_my_searches')
+def download_my_searches():
+    """Download only current user's searches as Excel file"""
+    import getpass
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from datetime import datetime
+    
+    # Get current username
+    username = getpass.getuser()
+    
+    # Create new workbook for user's searches
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = f"{username} Searches"
+    
+    # Style settings
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=12)
+    border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+    
+    # Add headers
+    headers = ['ID', 'Client Name', 'Report Date', 'Search URL', 'Status', 'Keywords Used', 'App Version']
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num)
+        cell.value = header
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = border
+    
+    # Get all searches and filter by username
+    all_searches = cloud.get_all_searches()  # We'll create this method
+    my_searches = [s for s in all_searches if s.get('username') == username]
+    
+    # Add user's searches
+    for row_num, search in enumerate(my_searches, 2):
+        ws.cell(row=row_num, column=1).value = search.get('id')
+        ws.cell(row=row_num, column=1).border = border
+        
+        ws.cell(row=row_num, column=2).value = search.get('client_name')
+        ws.cell(row=row_num, column=2).border = border
+        
+        ws.cell(row=row_num, column=3).value = search.get('report_date')
+        ws.cell(row=row_num, column=3).border = border
+        
+        search_url = search.get('search_url')
+        ws.cell(row=row_num, column=4).value = search_url
+        ws.cell(row=row_num, column=4).hyperlink = search_url
+        ws.cell(row=row_num, column=4).font = Font(color="0563C1", underline="single")
+        ws.cell(row=row_num, column=4).border = border
+        
+        ws.cell(row=row_num, column=5).value = search.get('status')
+        ws.cell(row=row_num, column=5).border = border
+        
+        ws.cell(row=row_num, column=6).value = search.get('keywords_used')
+        ws.cell(row=row_num, column=6).border = border
+        
+        ws.cell(row=row_num, column=7).value = search.get('app_version')
+        ws.cell(row=row_num, column=7).border = border
+    
+    # Adjust column widths
+    ws.column_dimensions['A'].width = 10
+    ws.column_dimensions['B'].width = 35
+    ws.column_dimensions['C'].width = 22
+    ws.column_dimensions['D'].width = 70
+    ws.column_dimensions['E'].width = 15
+    ws.column_dimensions['F'].width = 15
+    ws.column_dimensions['G'].width = 15
+    
+    # Create filename with username and date
+    today = datetime.now().strftime('%Y-%m-%d')
+    filename = f'RiskSearches_{username}_{today}.xlsx'
+    filepath = os.path.join(os.path.expanduser('~'), 'Downloads', filename)
+    
+    # Save file
+    wb.save(filepath)
+    
+    return send_file(filepath, as_attachment=True, download_name=filename)
 
 @app.route('/stats')
 def stats():

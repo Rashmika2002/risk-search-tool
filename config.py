@@ -12,18 +12,19 @@ Update these links after setting up OneDrive files
 # Format: https://onedrive.live.com/download?resid=XXXXX&authkey=XXXXX
 
 ONEDRIVE_CONFIG = {
-    # Keywords Excel file (developers update this)
-    "keywords_url": "https://onedrive-global.kpmg.com/:x:/r/personal/rhettiarachchi2_kpmg_com/Documents/RiskSearchTool/keywords.xlsx?d=w6fe6fe81b09a4f1ea813dc88c2d00868&csf=1&web=1&e=Lg5v8r",
+    # Local OneDrive sync folder path (CHANGE THIS to your actual path)
+    "sync_folder": "C:/Users/rhettiarachchi2/OneDrive - KPMG/RiskSearchTool",
     
-    # Master records Excel file (auto-updated by all users)
-    "master_records_url": "https://onedrive-global.kpmg.com/:x:/g/personal/rhettiarachchi2_kpmg_com/IQDlJ6mfBzynTJx0_N52KQpHAWsGNACVIWMV_ZkpJsYOLBA?email=rhettiarachchi2%40Kpmg.Com&e=mJsz6S",
+    # Set to True to use local sync folder instead of downloading
+    "use_sync_folder": True,
     
-    # Version control JSON file
-    "version_url": "https://onedrive-global.kpmg.com/:u:/g/personal/rhettiarachchi2_kpmg_com/IQDpmV1d-svgTLPb0rwn1GwcAccvYowF27kO4sQk0eNs5-E?email=rhettiarachchi2%40Kpmg.Com&e=xPOg0i",
+    # Fallback URLs (not needed if using sync folder)
+    "keywords_url": None,
+    "master_records_url": None,
+    "version_url": None,
     
-    # Cache settings
-    "cache_duration_hours": 1,  # How long to cache keywords locally
-    "offline_mode": True,  # Allow offline operation with cached data
+    "cache_duration_hours": 1,
+    "offline_mode": False,
 }
 
 # ============================================================================

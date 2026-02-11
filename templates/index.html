@@ -44,9 +44,9 @@
                         autofocus
                     >
                 </div>
-
                 <button class="btn" onclick="performSearch()">🔍 Generate Search Links</button>
-                <button class="btn btn-secondary" onclick="downloadExcel()">📥 Download Excel</button>
+                <button class="btn btn-secondary" onclick="downloadMySearches()">📥 Download My Searches ({{ my_search_count }})</button>
+
             </div>
 
             <div class="loading" id="loading">
@@ -61,35 +61,34 @@
         </div>
 
         <!-- Recent Searches -->
-        <div class="recent-searches">
-            <h2>📊 Recent Searches</h2>
-            
-            {% if recent_searches %}
-            <table class="search-table">
-                <thead>
-                    <tr>
-                        <th>Client Name</th>
-                        <th>Date</th>
-                        <th>Username</th>
-                        <th>Search Link</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for search in recent_searches %}
-                    <tr>
-                        <td>{{ search.client_name }}</td>
-                        <td>{{ search.report_date }}</td>
-                        <td>{{ search.username }}</td>
-                        <td><a href="{{ search.search_url }}" target="_blank">🔗 Open Search</a></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p style="color: #666; text-align: center; padding: 20px;">No searches yet. Start by entering company names above.</p>
-            {% endif %}
-        </div>
-    </div>
+<div class="recent-searches">
+    <h2>📊 Recent Searches</h2>
+    
+    {% if recent_searches %}
+    <table class="search-table">
+        <thead>
+            <tr>
+                <th>Client Name</th>
+                <th>Date</th>
+                <th>Username</th>
+                <th>Search Link</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for search in recent_searches %}
+            <tr>
+                <td>{{ search.client_name }}</td>
+                <td>{{ search.report_date }}</td>
+                <td>{{ search.username }}</td>
+                <td><a href="{{ search.search_url }}" target="_blank">🔗 Open Search</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: #666; text-align: center; padding: 20px;">No searches yet. Start by entering company names above.</p>
+    {% endif %}
+</div>
 
     <script>
     let sessionSearches = 0;
@@ -236,7 +235,9 @@
     function downloadExcel() {
         window.location.href = '/download';
     }
-
+    function downloadMySearches() {
+    window.location.href = '/download_my_searches';
+    }
     </script>
 </body>
 </html>
