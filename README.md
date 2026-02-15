@@ -193,40 +193,6 @@ ONEDRIVE_CONFIG = {
 ### **For Users:**
 
 Just launch the app - it updates automatically! 🎉
-
----
-
-## 🗂️ Project Structure
-
-```
-risk-search-tool/
-├── app.py                      # Main Flask application
-├── cloud_sync.py               # OneDrive sync module
-├── auto_updater.py             # Auto-update module
-├── config.py                   # Configuration
-├── requirements.txt            # Python dependencies
-│
-├── launcher.bat                # Windows launcher
-├── launcher.sh                 # Mac/Linux launcher
-│
-├── templates/
-│   └── index.html              # Web interface
-│
-├── static/
-│   ├── style.css               # Styling
-│   └── logo.png                # Company logo
-│
-├── README.md                   # This file
-├── DEPLOYMENT_GUIDE.md         # Deployment instructions
-└── ONEDRIVE_SETUP_GUIDE.md     # OneDrive setup
-
-Cache folder (auto-created):
-~/.risk_search_tool/
-├── keywords_cache.xlsx
-├── master_records_cache.xlsx
-└── version_cache.json
-```
-
 ---
 
 ## 🔐 Security
@@ -242,24 +208,6 @@ Cache folder (auto-created):
 - Set "edit" permissions only for developers on keywords.xlsx
 - Regularly review access logs
 - Keep repository private if it contains sensitive config
-
----
-
-## 📈 Keyword Categories
-
-### **32 Keywords across 6 Categories:**
-
-1. **Financial Crime (8):** fraud, corruption, bribery, money laundering, terrorist financing, sanctions violation, embezzlement, tax evasion
-
-2. **Legal & Regulatory (6):** lawsuit, litigation, court case, regulatory action, enforcement action, compliance breach
-
-3. **Human Rights & Labour (8):** human rights violation, forced labour, child labour, discrimination at work, labour law violation, union suppression, collective bargaining restriction, unsafe working conditions
-
-4. **Environmental & ESG (4):** environmental damage, pollution incident, environmental negligence, toxic waste
-
-5. **Governance & Ethics (4):** management misconduct, governance failure, ethics violation, whistleblower allegation
-
-6. **Cyber & Data (2):** data breach, leaked documents
 
 ---
 
@@ -307,10 +255,7 @@ Cache folder (auto-created):
 
 ## 📞 Support
 
-- **Bug Reports:** [GitHub Issues](https://github.com/yourcompany/risk-search-tool/issues)
-- **Feature Requests:** [GitHub Discussions](https://github.com/yourcompany/risk-search-tool/discussions)
-- **Installation Help:** [Your Email/Slack Channel]
-- **OneDrive Admin:** [IT Department Contact]
+- **Installation Help:** [rashmikaakila100@gmail.com]
 
 ---
 
@@ -323,19 +268,11 @@ Cache folder (auto-created):
 - [ ] Mobile app version
 - [ ] AI-powered risk scoring
 
----
-
-## 📜 License
-
-MIT License - See [LICENSE](LICENSE) file for details
-
----
-
 ## 👥 Contributors
 
-- **Your Name** - Initial development
-- **Team Lead** - OneDrive setup
-- **IT Department** - Deployment support
+- **Utharan Thavayoganathan, Aruna Udaya** - Guidance
+- **Rashmika Hettiarachchi** - Initial development
+- **Digital Forensic Team** - Deployment support
 
 ---
 
@@ -359,4 +296,4 @@ MIT License - See [LICENSE](LICENSE) file for details
 
 ## ⭐ Star this repo if it helped you!
 
-Made with ❤️ by [Your Company]
+Made by Rashmika Hettiarachchi (Analyst, KPMG)
