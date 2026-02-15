@@ -1,170 +1,359 @@
 """
 Cloud Synchronization Module
-Handles OneDrive Excel file downloads and uploads
+GOOGLE SHEETS VERSION - COMPLETE
+- Records searches to Google Sheets (Risk Searches sheet)
+- Reads keywords from Google Sheets (Keywords sheet)
+- Maintains local Excel backup for user's searches
+- Auto-syncs keyword changes from Google Sheets
 """
 import os
-import requests
 import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+import gspread
+from google.oauth2.service_account import Credentials
+from datetime import datetime
 import json
-from datetime import datetime, timedelta
-from config import ONEDRIVE_CONFIG, LOCAL_FILES, EXCEL_HEADERS
+import time
+import getpass
+from config import GOOGLE_SHEETS_CONFIG, LOCAL_FILES, EXCEL_HEADERS
 
 
 class CloudSync:
-    """Manages synchronization with OneDrive files"""
+    """Manages synchronization with Google Sheets"""
     
     def __init__(self):
-        self.cache_duration = timedelta(hours=ONEDRIVE_CONFIG['cache_duration_hours'])
-        self.offline_mode = ONEDRIVE_CONFIG.get('offline_mode', False)
-        self.use_sync_folder = ONEDRIVE_CONFIG.get('use_sync_folder', False)
-        self.sync_folder = ONEDRIVE_CONFIG.get('sync_folder', '')
+        self.username = getpass.getuser()
+        self.client = None
+        self.sheet = None
+        self.worksheet = None
+        self.keywords_worksheet = None
+        self._connect_to_google_sheets()
     
-    def _is_cache_valid(self, filepath):
-        """Check if cached file is still valid"""
-        if not os.path.exists(filepath):
-            return False
-        
-        file_time = datetime.fromtimestamp(os.path.getmtime(filepath))
-        return datetime.now() - file_time < self.cache_duration
-    
-    def _download_file(self, url, destination):
-        """Download file from OneDrive"""
+    def _connect_to_google_sheets(self):
+        """Connect to Google Sheets and setup worksheets"""
         try:
-            print(f"📥 Downloading from cloud: {os.path.basename(destination)}")
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
+            credentials_file = GOOGLE_SHEETS_CONFIG.get('credentials_file')
+            sheet_id = GOOGLE_SHEETS_CONFIG.get('sheet_id')
             
-            with open(destination, 'wb') as f:
-                f.write(response.content)
+            if not credentials_file or not os.path.exists(credentials_file):
+                print("⚠️ Google Sheets credentials not found - using local mode")
+                return
             
-            print(f"✅ Downloaded successfully")
-            return True
-        
+            if not sheet_id or sheet_id == "YOUR_GOOGLE_SHEET_ID":
+                print("⚠️ Google Sheet ID not configured - using local mode")
+                return
+            
+            # Define the scopes
+            scopes = [
+                'https://www.googleapis.com/auth/spreadsheets',
+                'https://www.googleapis.com/auth/drive'
+            ]
+            
+            # Load credentials
+            creds = Credentials.from_service_account_file(credentials_file, scopes=scopes)
+            
+            # Authorize the client
+            self.client = gspread.authorize(creds)
+            
+            # Open the spreadsheet by key (ID)
+            self.sheet = self.client.open_by_key(sheet_id)
+            
+            # Setup Risk Searches worksheet
+            try:
+                self.worksheet = self.sheet.worksheet("Risk Searches")
+            except gspread.exceptions.WorksheetNotFound:
+                # Create worksheet if doesn't exist
+                self.worksheet = self.sheet.add_worksheet(title="Risk Searches", rows=1000, cols=10)
+                # Add headers
+                headers = ['ID', 'Client Name', 'Report Date', 'Username', 
+                          'Search URL', 'Status', 'Keywords Used', 'App Version']
+                self.worksheet.update('A1:H1', [headers])
+                # Format header row
+                self.worksheet.format('A1:H1', {
+                    'backgroundColor': {'red': 0.27, 'green': 0.45, 'blue': 0.77},
+                    'textFormat': {'bold': True, 'foregroundColor': {'red': 1, 'green': 1, 'blue': 1}}
+                })
+                print("📄 Created 'Risk Searches' worksheet")
+            
+            # Setup Keywords worksheet
+            try:
+                self.keywords_worksheet = self.sheet.worksheet("Keywords")
+                print("✅ Found 'Keywords' worksheet")
+            except gspread.exceptions.WorksheetNotFound:
+                # Create Keywords worksheet
+                self.keywords_worksheet = self.sheet.add_worksheet(title="Keywords", rows=100, cols=3)
+                # Add headers
+                headers = ['Category', 'Keyword', 'Active']
+                self.keywords_worksheet.update('A1:C1', [headers])
+                
+                # Format header row
+                self.keywords_worksheet.format('A1:C1', {
+                    'backgroundColor': {'red': 0.27, 'green': 0.45, 'blue': 0.77},
+                    'textFormat': {'bold': True, 'foregroundColor': {'red': 1, 'green': 1, 'blue': 1}}
+                })
+                
+                # Add default 32 keywords
+                self._populate_default_keywords()
+                print("📄 Created 'Keywords' worksheet with 32 default keywords")
+            
+            print("✅ Connected to Google Sheets")
+            
         except Exception as e:
-            print(f"❌ Download failed: {str(e)}")
-            return False
+            print(f"❌ Google Sheets connection failed: {str(e)}")
+            print(f"   Error details: {type(e).__name__}")
+            print("⚠️ Running in local mode")
+            self.worksheet = None
+            self.keywords_worksheet = None
     
-    def _upload_file(self, filepath, url):
-        """Upload file to OneDrive (requires Microsoft Graph API)"""
-        # Note: Direct upload to OneDrive requires Graph API authentication
-        # For now, we'll append records locally and periodically sync
-        # Alternative: Use OneDrive sync folder
-        print("⚠️  Upload requires OneDrive sync folder or Graph API")
-        print("📝 Records saved locally. Sync via OneDrive desktop app.")
-        return False
+    def _populate_default_keywords(self):
+        """Populate Keywords worksheet with default 32 keywords"""
+        
+        keywords_data = [
+            ['Financial Crime', 'fraud', 'TRUE'],
+            ['Financial Crime', 'corruption', 'TRUE'],
+            ['Financial Crime', 'bribery', 'TRUE'],
+            ['Financial Crime', 'money laundering', 'TRUE'],
+            ['Financial Crime', 'terrorist financing', 'TRUE'],
+            ['Financial Crime', 'sanctions violation', 'TRUE'],
+            ['Financial Crime', 'embezzlement', 'TRUE'],
+            ['Financial Crime', 'tax evasion', 'TRUE'],
+            ['Legal & Regulatory', 'lawsuit', 'TRUE'],
+            ['Legal & Regulatory', 'litigation', 'TRUE'],
+            ['Legal & Regulatory', 'court case', 'TRUE'],
+            ['Legal & Regulatory', 'regulatory action', 'TRUE'],
+            ['Legal & Regulatory', 'enforcement action', 'TRUE'],
+            ['Legal & Regulatory', 'compliance breach', 'TRUE'],
+            ['Human Rights & Labour', 'human rights violation', 'TRUE'],
+            ['Human Rights & Labour', 'forced labour', 'TRUE'],
+            ['Human Rights & Labour', 'child labour', 'TRUE'],
+            ['Human Rights & Labour', 'discrimination at work', 'TRUE'],
+            ['Human Rights & Labour', 'labour law violation', 'TRUE'],
+            ['Human Rights & Labour', 'union suppression', 'TRUE'],
+            ['Human Rights & Labour', 'collective bargaining restriction', 'TRUE'],
+            ['Human Rights & Labour', 'unsafe working conditions', 'TRUE'],
+            ['Environmental & ESG', 'environmental damage', 'TRUE'],
+            ['Environmental & ESG', 'pollution incident', 'TRUE'],
+            ['Environmental & ESG', 'environmental negligence', 'TRUE'],
+            ['Environmental & ESG', 'toxic waste', 'TRUE'],
+            ['Governance & Ethics', 'management misconduct', 'TRUE'],
+            ['Governance & Ethics', 'governance failure', 'TRUE'],
+            ['Governance & Ethics', 'ethics violation', 'TRUE'],
+            ['Governance & Ethics', 'whistleblower allegation', 'TRUE'],
+            ['Cyber & Data', 'data breach', 'TRUE'],
+            ['Cyber & Data', 'leaked documents', 'TRUE'],
+        ]
+        
+        # Append all keywords at once (starts from row 2)
+        self.keywords_worksheet.append_rows(keywords_data)
+        
+        print("✅ Added 32 default keywords to Google Sheet")
     
     def get_keywords(self):
-        """Get keywords from OneDrive Excel"""
-    
-    # If using OneDrive sync folder, read directly
-        if self.use_sync_folder and self.sync_folder:
-            keywords_file = os.path.join(self.sync_folder, 'keywords.xlsx')
-        else:
-            keywords_file = LOCAL_FILES['keywords']
+        """
+        Get keywords from Google Sheets Keywords worksheet
+        Reads all active keywords (where Active column = TRUE)
+        """
         
-        # Try to download if not using sync folder
-        if not self._is_cache_valid(keywords_file):
-            url = ONEDRIVE_CONFIG.get('keywords_url')
-            if url:
-                self._download_file(url, keywords_file)
-    
-    # Read keywords from file
-        if os.path.exists(keywords_file):
+        if self.keywords_worksheet is not None:
             try:
-                wb = openpyxl.load_workbook(keywords_file, read_only=True, data_only=True)
-                ws = wb.active
-            
+                # Get all values from Keywords sheet
+                all_values = self.keywords_worksheet.get_all_values()
+                
+                # Skip header row and extract active keywords
                 keywords = []
-                for row in ws.iter_rows(min_row=2, values_only=True):
-                    if row[2]:  # Active column = TRUE
-                        keywords.append(row[1])  # Keyword column
-            
-                print(f"📋 Loaded {len(keywords)} keywords from OneDrive")
+                for row in all_values[1:]:  # Skip header
+                    if len(row) >= 3:
+                        category = row[0]
+                        keyword = row[1]
+                        active = row[2].upper()
+                        
+                        # Check if active (TRUE, YES, 1, or checked)
+                        if active in ['TRUE', 'YES', '1', 'CHECKED', 'X']:
+                            if keyword and keyword.strip():
+                                keywords.append(keyword.strip())
+                
+                print(f"📋 Loaded {len(keywords)} keywords from Google Sheets")
                 return keywords
-        
+            
             except Exception as e:
-                print(f"❌ Error reading keywords: {str(e)}")
-    
-    # Fallback
-        print("⚠️  Using default keywords (offline mode)")
-        return self._get_default_keywords()
-        
-        return []
+                print(f"❌ Error reading keywords from Google Sheets: {str(e)}")
+                print("⚠️ Using default keywords")
+                return self._get_default_keywords()
+        else:
+            # No Google Sheets connection - use default
+            print("⚠️ Using default keywords (no Google Sheets)")
+            return self._get_default_keywords()
     
     def _get_default_keywords(self):
-        """Fallback keywords if cloud is unavailable"""
+        """Fallback keywords if Google Sheets unavailable"""
         return [
-            "fraud", "corruption", "bribery", "money laundering",
-            "terrorist financing", "sanctions violation", "embezzlement", 
-            "tax evasion", "lawsuit", "litigation", "court case",
-            "regulatory action", "enforcement action", "compliance breach",
-            "human rights violation", "forced labour", "child labour",
-            "discrimination at work", "labour law violation", "union suppression",
-            "collective bargaining restriction", "unsafe working conditions",
-            "environmental damage", "pollution incident", 
-            "environmental negligence", "toxic waste",
-            "management misconduct", "governance failure",
-            "ethics violation", "whistleblower allegation",
-            "data breach", "leaked documents"
+            "Bankruptcy","Insolvency","Liquidation","Winding-up petition","Receivership","Crime"
+            ,"Fraud","Corruption","Bribery","Money laundering","Terrorist financing","Sanctions violation"
+            ,"Embezzlement","Tax evasion","Human rights abuse","Labour rights violation","Forced labour"
+            ,"Child labour","Workplace discrimination","Union suppression","Environmental violation","Misconduct"
+            ,"Governance failure","Ethics violation","Whistleblower allegation","Reputation risk","Data breach"
+            ,"Leaked documents","Lawsuit","Court case","Litigation","Regulatory","Enforcement action"
         ]
     
     def append_search_record(self, record_data):
-        """Append search record to master records file"""
-    
-    # Determine which file to use
-        if self.use_sync_folder and self.sync_folder:
-            records_file = os.path.join(self.sync_folder, 'master_records.xlsx')
-        else:
-            records_file = LOCAL_FILES['master_records']
-    
-    # Create file if doesn't exist
-        if not os.path.exists(records_file):
-            self._create_master_records_file(records_file)
-    
-    # Append record
-        try:
-            wb = openpyxl.load_workbook(records_file)
-            ws = wb.active
+        """
+        Append search record to Google Sheets AND local Excel
+        Returns record ID
+        """
         
+        # Always save to local Excel first
+        local_id = self._save_to_local_excel(record_data)
+        
+        # Try to save to Google Sheets
+        if self.worksheet is not None:
+            try:
+                # Get current row count
+                all_values = self.worksheet.get_all_values()
+                next_row = len(all_values) + 1
+                record_id = next_row - 1  # Subtract header row
+                
+                # Prepare row data
+                row_data = [
+                    record_id,
+                    record_data.get('client_name', ''),
+                    record_data.get('report_date', ''),
+                    self.username,
+                    record_data.get('search_url', ''),
+                    record_data.get('status', 'Success'),
+                    record_data.get('keywords_used', 0),
+                    record_data.get('app_version', '')
+                ]
+                
+                # Append row to Google Sheets
+                self.worksheet.append_row(row_data, value_input_option='USER_ENTERED')
+                
+                print(f"✅ Saved to Google Sheets (Row {next_row}, ID: {record_id})")
+                print(f"💾 Also saved to local Excel backup")
+                
+                return record_id
+            
+            except Exception as e:
+                print(f"❌ Google Sheets save failed: {str(e)}")
+                print(f"💾 Data saved to local Excel only (ID: {local_id})")
+                return local_id
+        else:
+            # No Google Sheets connection
+            print(f"💾 Saved to local Excel only (ID: {local_id})")
+            return local_id
+    
+    def _save_to_local_excel(self, record_data):
+        """Save search to local Excel file as backup"""
+        
+        # Get local file path for this user
+        cache_dir = os.path.join(os.path.expanduser("~"), ".risk_search_tool")
+        os.makedirs(cache_dir, exist_ok=True)
+        local_file = os.path.join(cache_dir, f"{self.username}_searches.xlsx")
+        
+        # Create file if doesn't exist
+        if not os.path.exists(local_file):
+            self._create_local_excel_file(local_file)
+        
+        try:
+            wb = openpyxl.load_workbook(local_file)
+            ws = wb.active
+            
             next_row = ws.max_row + 1
             next_id = next_row - 1
-        
-            ws.cell(row=next_row, column=1).value = next_id
-            ws.cell(row=next_row, column=2).value = record_data['client_name']
-            ws.cell(row=next_row, column=3).value = record_data['report_date']
-            ws.cell(row=next_row, column=4).value = record_data['username']
-            ws.cell(row=next_row, column=5).value = record_data['search_url']
-            ws.cell(row=next_row, column=6).value = record_data['status']
-            ws.cell(row=next_row, column=7).value = record_data['keywords_used']
-            ws.cell(row=next_row, column=8).value = record_data['app_version']
             
-            wb.save(records_file)
-            print(f"✅ Record saved (ID: {next_id})")
+            # Add data
+            ws.cell(row=next_row, column=1).value = next_id
+            ws.cell(row=next_row, column=2).value = record_data.get('client_name')
+            ws.cell(row=next_row, column=3).value = record_data.get('report_date')
+            ws.cell(row=next_row, column=4).value = self.username
+            ws.cell(row=next_row, column=5).value = record_data.get('search_url')
+            ws.cell(row=next_row, column=6).value = record_data.get('status')
+            ws.cell(row=next_row, column=7).value = record_data.get('keywords_used')
+            ws.cell(row=next_row, column=8).value = record_data.get('app_version')
+            
+            wb.save(local_file)
+            wb.close()
+            
             return next_id
-    
+        
         except Exception as e:
-            print(f"❌ Error saving record: {str(e)}")
+            print(f"❌ Local save failed: {str(e)}")
             return None
+    
+    def _create_local_excel_file(self, filepath):
+        """Create new local Excel file with headers"""
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = f"{self.username} Searches"
+        
+        # Add headers with styling
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=12)
+        
+        for col_num, header in enumerate(EXCEL_HEADERS['master_records'], 1):
+            cell = ws.cell(row=1, column=col_num)
+            cell.value = header
+            cell.fill = header_fill
+            cell.font = header_font
+        
+        # Set column widths
+        ws.column_dimensions['A'].width = 10
+        ws.column_dimensions['B'].width = 35
+        ws.column_dimensions['C'].width = 22
+        ws.column_dimensions['D'].width = 20
+        ws.column_dimensions['E'].width = 70
+        ws.column_dimensions['F'].width = 15
+        ws.column_dimensions['G'].width = 15
+        ws.column_dimensions['H'].width = 15
+        
+        wb.save(filepath)
+        wb.close()
+        print(f"📄 Created local Excel backup: {filepath}")
+    
     def get_all_searches(self):
-        """Get ALL searches from master records (not just recent)"""
+        """Get ALL searches from Google Sheets"""
         
-        # Determine which file to use
-        if self.use_sync_folder and self.sync_folder:
-            sync_folder = self.sync_folder.replace('\\', '/')
-            records_file = f"{sync_folder}/master_records.xlsx"
+        if self.worksheet is not None:
+            try:
+                # Get all values from sheet
+                all_values = self.worksheet.get_all_values()
+                
+                # Skip header row
+                searches = []
+                for row in all_values[1:]:
+                    if len(row) >= 8 and row[1]:  # Has data in client name column
+                        searches.append({
+                            'id': row[0] if row[0] else '',
+                            'client_name': row[1],
+                            'report_date': row[2],
+                            'username': row[3],
+                            'search_url': row[4],
+                            'status': row[5],
+                            'keywords_used': row[6],
+                            'app_version': row[7]
+                        })
+                
+                return searches
+            
+            except Exception as e:
+                print(f"❌ Error loading from Google Sheets: {str(e)}")
+                return self._get_local_searches()
         else:
-            records_file = LOCAL_FILES['master_records']
+            return self._get_local_searches()
+    
+    def _get_local_searches(self):
+        """Get searches from local Excel file"""
         
-        if not os.path.exists(records_file):
+        cache_dir = os.path.join(os.path.expanduser("~"), ".risk_search_tool")
+        local_file = os.path.join(cache_dir, f"{self.username}_searches.xlsx")
+        
+        if not os.path.exists(local_file):
             return []
         
         try:
-            wb = openpyxl.load_workbook(records_file, read_only=True, data_only=True)
+            wb = openpyxl.load_workbook(local_file, read_only=True, data_only=True)
             ws = wb.active
             
             searches = []
-            
-            # Read all rows (skip header)
             for row in range(2, ws.max_row + 1):
                 searches.append({
                     'id': ws.cell(row=row, column=1).value,
@@ -178,160 +367,140 @@ class CloudSync:
                 })
             
             wb.close()
-            print(f"📊 Loaded {len(searches)} total searches")
             return searches
         
         except Exception as e:
-            print(f"❌ Error reading all searches: {str(e)}")
             return []
-            
-    def _create_master_records_file(self, filepath):
-        """Create new master records Excel file"""
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Risk Search Records"
-        
-        # Add headers
-        for col_num, header in enumerate(EXCEL_HEADERS['master_records'], 1):
-            ws.cell(row=1, column=col_num).value = header
-        
-        wb.save(filepath)
-        print(f"📄 Created new master records file")
     
     def get_recent_searches(self, limit=10):
-        """Get recent searches from master records"""
-    
-    # If using OneDrive sync folder, read directly
-        if self.use_sync_folder and self.sync_folder:
-            records_file = os.path.join(self.sync_folder, 'master_records.xlsx')
-            print(f"📂 Reading from sync folder: {records_file}")  # DEBUG
-        else:
-            records_file = LOCAL_FILES['master_records']
-            print(f"📂 Reading from cache: {records_file}")  # DEBUG
-    
-        print(f"📄 File exists: {os.path.exists(records_file)}")  # DEBUG
-    
-        if not os.path.exists(records_file):
-            print("⚠️ Master records file not found!")  # DEBUG
-            return []
-    
-        try:
-            wb = openpyxl.load_workbook(records_file)
-            ws = wb.active
+        """Get recent searches"""
         
-            max_row = ws.max_row
-            print(f"📊 Total rows in Excel: {max_row}")  # DEBUG
-        
-            searches = []
-            start_row = max(2, max_row - limit + 1)
-        
-            for row in range(max_row, start_row - 1, -1):
-                if row > 1:
-                    searches.append({
-                        'id': ws.cell(row=row, column=1).value,
-                        'client_name': ws.cell(row=row, column=2).value,
-                        'report_date': ws.cell(row=row, column=3).value,
-                        'username': ws.cell(row=row, column=4).value,
-                        'search_url': ws.cell(row=row, column=5).value,
-                        'status': ws.cell(row=row, column=6).value,
-                        'keywords_used': ws.cell(row=row, column=7).value,
-                        'app_version': ws.cell(row=row, column=8).value
-                    })
-        
-            print(f"✅ Loaded {len(searches)} recent searches")  # DEBUG
-            return searches
-    
-        except Exception as e:
-            print(f"❌ Error reading recent searches: {str(e)}")
-        return []
-    # Rest of method stays the same...
+        all_searches = self.get_all_searches()
+        return all_searches[-limit:] if len(all_searches) > limit else all_searches
     
     def get_total_records(self):
         """Get total number of records"""
-    
-    # If using OneDrive sync folder, read directly
-        if self.use_sync_folder and self.sync_folder:
-            records_file = os.path.join(self.sync_folder, 'master_records.xlsx')
+        
+        if self.worksheet is not None:
+            try:
+                all_values = self.worksheet.get_all_values()
+                return len(all_values) - 1  # Subtract header
+            except Exception as e:
+                return self._get_local_record_count()
         else:
-            records_file = LOCAL_FILES['master_records']
+            return self._get_local_record_count()
     
-        if not os.path.exists(records_file):
-            return 0
+    def _get_local_record_count(self):
+        """Count records in local Excel"""
+        cache_dir = os.path.join(os.path.expanduser("~"), ".risk_search_tool")
+        local_file = os.path.join(cache_dir, f"{self.username}_searches.xlsx")
+        
+        if os.path.exists(local_file):
+            try:
+                wb = openpyxl.load_workbook(local_file, read_only=True)
+                ws = wb.active
+                total = ws.max_row - 1
+                wb.close()
+                return total
+            except:
+                return 0
+        return 0
     
-        try:
-            wb = openpyxl.load_workbook(records_file)
-            ws = wb.active
-            return ws.max_row - 1  # Exclude header
-        except:
-            return 0
-
-
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
-
-def create_keywords_template():
-    """Create template keywords Excel file for OneDrive upload"""
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Risk Keywords"
-    
-    # Headers
-    ws['A1'] = 'Category'
-    ws['B1'] = 'Keyword'
-    ws['C1'] = 'Active'
-    
-    # Sample data
-    keywords_data = [
-        ('Financial Crime', 'fraud', True),
-        ('Financial Crime', 'corruption', True),
-        ('Financial Crime', 'bribery', True),
-        ('Financial Crime', 'money laundering', True),
-        ('Financial Crime', 'terrorist financing', True),
-        ('Financial Crime', 'sanctions violation', True),
-        ('Financial Crime', 'embezzlement', True),
-        ('Financial Crime', 'tax evasion', True),
-        ('Legal & Regulatory', 'lawsuit', True),
-        ('Legal & Regulatory', 'litigation', True),
-        ('Legal & Regulatory', 'court case', True),
-        ('Legal & Regulatory', 'regulatory action', True),
-        ('Legal & Regulatory', 'enforcement action', True),
-        ('Legal & Regulatory', 'compliance breach', True),
-        ('Human Rights & Labour', 'human rights violation', True),
-        ('Human Rights & Labour', 'forced labour', True),
-        ('Human Rights & Labour', 'child labour', True),
-        ('Human Rights & Labour', 'discrimination at work', True),
-        ('Human Rights & Labour', 'labour law violation', True),
-        ('Human Rights & Labour', 'union suppression', True),
-        ('Human Rights & Labour', 'collective bargaining restriction', True),
-        ('Human Rights & Labour', 'unsafe working conditions', True),
-        ('Environmental & ESG', 'environmental damage', True),
-        ('Environmental & ESG', 'pollution incident', True),
-        ('Environmental & ESG', 'environmental negligence', True),
-        ('Environmental & ESG', 'toxic waste', True),
-        ('Governance & Ethics', 'management misconduct', True),
-        ('Governance & Ethics', 'governance failure', True),
-        ('Governance & Ethics', 'ethics violation', True),
-        ('Governance & Ethics', 'whistleblower allegation', True),
-        ('Cyber & Data', 'data breach', True),
-        ('Cyber & Data', 'leaked documents', True),
-    ]
-    
-    for row_num, (category, keyword, active) in enumerate(keywords_data, 2):
-        ws.cell(row=row_num, column=1).value = category
-        ws.cell(row=row_num, column=2).value = keyword
-        ws.cell(row=row_num, column=3).value = active
-    
-    wb.save('keywords_template.xlsx')
-    print("✅ Created keywords_template.xlsx - Upload this to OneDrive")
+    def export_to_excel(self, filepath, username_filter=None):
+        """Export data to Excel file"""
+        
+        # Create new workbook
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        
+        if username_filter:
+            ws.title = f"{username_filter} Searches"
+        else:
+            ws.title = "All Searches"
+        
+        # Style settings
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=12)
+        border = Border(
+            left=Side(style='thin'), right=Side(style='thin'),
+            top=Side(style='thin'), bottom=Side(style='thin')
+        )
+        
+        # Add headers
+        headers = ['ID', 'Client Name', 'Report Date', 'Username', 'Search URL', 
+                  'Status', 'Keywords Used', 'App Version']
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num)
+            cell.value = header
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = border
+        
+        # Get data
+        all_searches = self.get_all_searches()
+        
+        # Filter by username if specified
+        if username_filter:
+            all_searches = [s for s in all_searches if s.get('username') == username_filter]
+        
+        # Add data rows
+        for row_num, search in enumerate(all_searches, 2):
+            ws.cell(row=row_num, column=1).value = search.get('id')
+            ws.cell(row=row_num, column=1).border = border
+            
+            ws.cell(row=row_num, column=2).value = search.get('client_name')
+            ws.cell(row=row_num, column=2).border = border
+            
+            ws.cell(row=row_num, column=3).value = search.get('report_date')
+            ws.cell(row=row_num, column=3).border = border
+            
+            ws.cell(row=row_num, column=4).value = search.get('username')
+            ws.cell(row=row_num, column=4).border = border
+            
+            search_url = search.get('search_url')
+            ws.cell(row=row_num, column=5).value = search_url
+            if search_url:
+                ws.cell(row=row_num, column=5).hyperlink = search_url
+                ws.cell(row=row_num, column=5).font = Font(color="0563C1", underline="single")
+            ws.cell(row=row_num, column=5).border = border
+            
+            ws.cell(row=row_num, column=6).value = search.get('status')
+            ws.cell(row=row_num, column=6).border = border
+            
+            ws.cell(row=row_num, column=7).value = search.get('keywords_used')
+            ws.cell(row=row_num, column=7).border = border
+            
+            ws.cell(row=row_num, column=8).value = search.get('app_version')
+            ws.cell(row=row_num, column=8).border = border
+        
+        # Adjust column widths
+        ws.column_dimensions['A'].width = 10
+        ws.column_dimensions['B'].width = 35
+        ws.column_dimensions['C'].width = 22
+        ws.column_dimensions['D'].width = 20
+        ws.column_dimensions['E'].width = 70
+        ws.column_dimensions['F'].width = 15
+        ws.column_dimensions['G'].width = 15
+        ws.column_dimensions['H'].width = 15
+        
+        # Save file
+        wb.save(filepath)
+        wb.close()
+        
+        print(f"✅ Excel exported to: {filepath}")
+        return filepath
 
 
 if __name__ == "__main__":
-    # Create template for developers
-    create_keywords_template()
-    print("\n📋 Template created successfully!")
-    print("Next steps:")
-    print("1. Upload keywords_template.xlsx to OneDrive")
-    print("2. Get shareable link with 'edit' permissions")
-    print("3. Convert to direct download link")
-    print("4. Update config.py with the link")
+    print("Testing Google Sheets connection and keyword reading...\n")
+    
+    cloud = CloudSync()
+    
+    if cloud.keywords_worksheet:
+        keywords = cloud.get_keywords()
+        print(f"\n✅ Successfully loaded {len(keywords)} keywords:")
+        for i, kw in enumerate(keywords, 1):
+            print(f"  {i}. {kw}")
+    else:
+        print("\n⚠️ Keywords worksheet not available")

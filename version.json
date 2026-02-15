@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "release_date": "2025-02-15",
+  "changes": [
+    "Moved to Google Sheets database",
+    "Keywords now managed in Google Sheets",
+    "Embedded credentials for security",
+    "Removed OneDrive dependency",
+    "GitHub-based auto-updates",
+    "Improved one-click launcher"
+  ],
+  "critical_update": false
+}

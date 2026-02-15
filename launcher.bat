@@ -1,72 +1,91 @@
 @echo off
-title Risk Search Tool Launcher
-color 0A
+REM ============================================================================
+REM Risk Search Tool - One-Click Launcher
+REM ============================================================================
+
+title Risk Search Tool
+
+REM Change to script directory
+cd /d "%~dp0"
+
+REM Clear screen
+cls
 
 echo.
-echo ====================================================
-echo       RISK SEARCH TOOL - LAUNCHER
-echo ====================================================
+echo ================================================================================
+echo                          RISK SEARCH TOOL
+echo ================================================================================
+echo.
+echo Starting application...
 echo.
 
 REM Check if Python is installed
-echo [1/4] Checking Python installation...
 python --version >nul 2>&1
 if errorlevel 1 (
+    echo ❌ ERROR: Python is not installed or not in PATH
     echo.
-    echo [ERROR] Python is not installed!
-    echo.
-    echo Please install Python 3.8 or higher from:
-    echo https://www.python.org/downloads/
-    echo.
+    echo Please install Python from: https://www.python.org/downloads/
     echo Make sure to check "Add Python to PATH" during installation
     echo.
     pause
     exit /b 1
 )
-echo       Python is installed
 
-REM Check if in correct directory
-echo.
-echo [2/4] Checking application files...
-if not exist "app.py" (
-    echo [ERROR] app.py not found!
-    echo Please make sure you are running this from the application folder
-    pause
-    exit /b 1
-)
-echo       Application files found
-
-REM Install/update dependencies
-echo.
-echo [3/4] Installing dependencies...
-pip install -r requirements.txt --quiet --disable-pip-version-check
-if errorlevel 1 (
-    echo [WARNING] Some dependencies may not have installed correctly
-    echo The application may still work. If you encounter errors, run:
-    echo pip install -r requirements.txt
+REM Check if virtual environment exists
+if not exist "venv" (
+    echo 📦 First-time setup: Creating virtual environment...
+    python -m venv venv
+    if errorlevel 1 (
+        echo ❌ Failed to create virtual environment
+        pause
+        exit /b 1
+    )
+    echo ✅ Virtual environment created
     echo.
 )
-echo       Dependencies ready
 
-REM Run application
+REM Activate virtual environment
+echo 🔧 Activating virtual environment...
+call venv\Scripts\activate.bat
+
+REM Check if requirements are installed
+if not exist "venv\.installed" (
+    echo 📦 Installing dependencies (this may take a minute)...
+    echo.
+    pip install -r requirements.txt --quiet --upgrade
+    if errorlevel 1 (
+        echo ❌ Failed to install dependencies
+        pause
+        exit /b 1
+    )
+    echo. > venv\.installed
+    echo ✅ Dependencies installed
+    echo.
+)
+
+REM Update dependencies if requirements.txt changed
+pip install -r requirements.txt --quiet --upgrade >nul 2>&1
+
+REM Start the application
 echo.
-echo [4/4] Starting application...
+echo ================================================================================
+echo 🚀 Launching Risk Search Tool...
+echo ================================================================================
 echo.
-echo ====================================================
+echo Browser will open automatically at http://127.0.0.1:5000
 echo.
-echo The application will open in your browser shortly
+echo To stop the application, close this window or press Ctrl+C
 echo.
-echo To stop: Press Ctrl+C or close this window
-echo.
-echo ====================================================
+echo ================================================================================
 echo.
 
+REM Start Python app
 python app.py
 
-REM If app exits, pause so user can see error message
+REM If app exits, pause so user can see error messages
 echo.
 echo.
-echo ====================================================
-echo Application has stopped
-echo ====================================================
+echo ================================================================================
+echo Application stopped
+echo ================================================================================
 pause

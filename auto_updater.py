@@ -1,6 +1,7 @@
 """
 Auto-Update Module
 Checks for updates from GitHub and downloads new version
+NO ONEDRIVE - EVERYTHING FROM GITHUB
 """
 
 import requests
@@ -9,7 +10,7 @@ import os
 import sys
 import subprocess
 from datetime import datetime
-from config import GITHUB_CONFIG, APP_CONFIG, ONEDRIVE_CONFIG, LOCAL_FILES
+from config import GITHUB_CONFIG, APP_CONFIG
 
 
 class AutoUpdater:
@@ -24,21 +25,20 @@ class AutoUpdater:
     
     def check_for_updates(self):
         """
-        Check if new version is available
+        Check if new version is available from GitHub
         Returns: (has_update, new_version, changes)
         """
         try:
-            print("🔍 Checking for updates...")
+            print("🔍 Checking for updates from GitHub...")
             
-            # Download version.json from OneDrive
-            version_url = ONEDRIVE_CONFIG['version_url']
+            # Download version.json from GitHub
+            version_url = f"https://raw.githubusercontent.com/{self.repo_owner}/{self.repo_name}/{self.branch}/version.json"
             
-            if not version_url or version_url == "YOUR_ONEDRIVE_VERSION_JSON_DIRECT_LINK":
-                print("⚠️  Version URL not configured")
+            response = requests.get(version_url, timeout=10)
+            
+            if response.status_code != 200:
+                print("ℹ️  No updates available")
                 return False, None, None
-            
-            response = requests.get(version_url, timeout=5)
-            response.raise_for_status()
             
             version_data = response.json()
             new_version = version_data.get('version')
@@ -58,7 +58,7 @@ class AutoUpdater:
                 return False, None, None
         
         except Exception as e:
-            print(f"❌ Update check failed: {str(e)}")
+            print(f"ℹ️  Update check skipped: {str(e)}")
             return False, None, None
     
     def _is_newer_version(self, new_ver, current_ver):
@@ -82,10 +82,11 @@ class AutoUpdater:
                 'app.py',
                 'cloud_sync.py',
                 'auto_updater.py',
-                'config.py',
                 'requirements.txt',
                 'templates/index.html',
             ]
+            
+            # DO NOT UPDATE config.py - it has embedded credentials
             
             updated_files = []
             
@@ -110,18 +111,18 @@ class AutoUpdater:
                         print(f"  ⚠️  Skipped: {file} (not found)")
                 
                 except Exception as e:
-                    print(f"  ❌ Failed: {file} - {str(e)}")
+                    print(f"  ⚠️  Skipped: {file} - {str(e)}")
             
             if updated_files:
                 print(f"\n✅ Update complete! Updated {len(updated_files)} files")
-                print("🔄 Please restart the application")
+                print("🔄 Restarting application...")
                 return True
             else:
-                print("❌ No files were updated")
+                print("ℹ️  No files were updated")
                 return False
         
         except Exception as e:
-            print(f"❌ Update download failed: {str(e)}")
+            print(f"⚠️  Update download failed: {str(e)}")
             return False
     
     def install_dependencies(self):
@@ -130,12 +131,12 @@ class AutoUpdater:
             print("📦 Installing dependencies...")
             subprocess.check_call([
                 sys.executable, '-m', 'pip', 'install', '-r', 
-                'requirements.txt', '--quiet'
+                'requirements.txt', '--quiet', '--upgrade'
             ])
             print("✅ Dependencies installed")
             return True
         except Exception as e:
-            print(f"❌ Dependency installation failed: {str(e)}")
+            print(f"⚠️  Dependency installation failed: {str(e)}")
             return False
     
     def perform_update(self):
@@ -145,16 +146,16 @@ class AutoUpdater:
         if not has_update:
             return False
         
-        print("\n" + "="*60)
+        print("\n" + "="*70)
         print(f"📦 UPDATE AVAILABLE: v{new_version}")
-        print("="*60)
+        print("="*70)
         
         if changes:
             print("\n📝 Changes:")
             for change in changes:
                 print(f"  • {change}")
         
-        print("\n" + "="*60)
+        print("\n" + "="*70)
         
         if self.auto_update:
             print("🔄 Auto-update enabled. Downloading...")
@@ -169,7 +170,8 @@ class AutoUpdater:
                 time.sleep(3)
                 
                 # Restart application
-                os.execv(sys.executable, [sys.executable] + sys.argv)
+                python = sys.executable
+                os.execl(python, python, *sys.argv)
             
             return True
         else:
@@ -187,11 +189,11 @@ class AutoUpdater:
 
 
 # ============================================================================
-# VERSION FILE CREATOR
+# VERSION FILE CREATOR (Run this when you want to release an update)
 # ============================================================================
 
-def create_version_file(version="1.0.0", changes=None):
-    """Create version.json file for upload to OneDrive"""
+def create_version_file(version="2.0.0", changes=None):
+    """Create version.json file for GitHub"""
     
     if changes is None:
         changes = ["Initial release"]
@@ -200,8 +202,7 @@ def create_version_file(version="1.0.0", changes=None):
         "version": version,
         "release_date": datetime.now().strftime("%Y-%m-%d"),
         "changes": changes,
-        "critical_update": False,
-        "download_url": f"https://github.com/{GITHUB_CONFIG['repo_owner']}/{GITHUB_CONFIG['repo_name']}/archive/refs/heads/{GITHUB_CONFIG['branch']}.zip"
+        "critical_update": False
     }
     
     with open('version.json', 'w') as f:
@@ -209,7 +210,10 @@ def create_version_file(version="1.0.0", changes=None):
     
     print("✅ Created version.json")
     print(f"📦 Version: {version}")
-    print("📝 Upload this file to OneDrive")
+    print("📝 Commit this file to GitHub:")
+    print("   git add version.json")
+    print("   git commit -m 'Update version to {}'".format(version))
+    print("   git push origin main")
 
 
 # ============================================================================
@@ -221,23 +225,14 @@ if __name__ == "__main__":
     
     # Create sample version file
     create_version_file(
-        version="1.0.1",
+        version="2.0.1",
         changes=[
-            "Added cloud synchronization",
-            "Implemented auto-update feature",
-            "Fixed search URL encoding"
+            "Removed OneDrive dependency",
+            "Keywords now in Google Sheets",
+            "Embedded credentials for security",
+            "Improved auto-update from GitHub"
         ]
     )
     
-    print("\n" + "="*60)
-    
-    # Test update check
-    updater = AutoUpdater()
-    has_update, new_ver, changes = updater.check_for_updates()
-    
-    if has_update:
-        print(f"\n✅ Update test successful!")
-        print(f"New version: {new_ver}")
-        print("Changes:", changes)
-    else:
-        print("\nℹ️  No updates found (expected if version.json not on OneDrive yet)")
+    print("\n" + "="*70)
+    print("Next: Push version.json to GitHub to enable auto-updates")
