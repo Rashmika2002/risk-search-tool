@@ -23,8 +23,8 @@
             <p>Total Searches</p>
         </div>
         <div class="stat-card">
-            <h3 id="sessionSearches">0</h3>
-            <p>This Session</p>
+            <h3 id="mySearchCount">{{ my_search_count }}</h3>
+            <p>My Searches</p>
         </div>
         </div>
 
@@ -91,8 +91,6 @@
 </div>
 
     <script>
-    let sessionSearches = 0;
-
     // Wait for page to fully load
     window.addEventListener('DOMContentLoaded', function() {
         // Fetch stats
@@ -157,14 +155,14 @@
             showAlert(data.message, 'success');
             displayResults(data.results);
             
-            // Update stats - SAFE VERSION
-            sessionSearches += data.results.length;
-            
-            const sessionEl = document.getElementById('sessionSearches');
-            if (sessionEl) {
-                sessionEl.textContent = sessionSearches;
+            // Update my search count
+            const myCountEl = document.getElementById('mySearchCount');
+            if (myCountEl) {
+                const currentCount = parseInt(myCountEl.textContent) || 0;
+                myCountEl.textContent = currentCount + data.results.length;
             }
             
+            // Update total records
             const totalEl = document.getElementById('totalRecords');
             if (totalEl) {
                 totalEl.textContent = data.total_records;
