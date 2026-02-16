@@ -196,7 +196,7 @@ Users' apps will auto-update on next launch!
 ✅ config.py (embedded encrypted credentials)
 ✅ app.py, cloud_sync.py (application code)
 ✅ version.json (version tracking)
-✅ START_APP.bat (launcher)
+✅ RiskSearchTool.bat (launcher)
 ```
 
 ---
@@ -211,7 +211,7 @@ risk-search-tool/
 ├── config.py                   # Configuration (embedded credentials)
 ├── requirements.txt            # Python dependencies
 ├── version.json                # Version tracking
-├── START_APP.bat               # Windows launcher
+├── RiskSearchTool.bat               # Windows launcher
 ├── README.md                   # This file
 └── templates/
     └── index.html              # Web interface
