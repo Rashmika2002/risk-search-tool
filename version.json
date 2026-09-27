@@ -1,13 +1,12 @@
 {
-  "version": "2.0.0",
-  "release_date": "2025-02-15",
+  "version": "2.0.2",
+  "release_date": "2026-09-27",
   "changes": [
-    "Moved to Google Sheets database",
-    "Keywords now managed in Google Sheets",
-    "Embedded credentials for security",
     "Removed OneDrive dependency",
-    "GitHub-based auto-updates",
-    "Improved one-click launcher"
+    "Keywords now in Google Sheets",
+    "Embedded credentials for security",
+    "Improved auto-update from GitHub",
+    "Added selectable Russian risk keyword sheet"
   ],
   "critical_update": false
 }

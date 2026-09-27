@@ -2,7 +2,7 @@
 
 > Comprehensive company risk screening with automated keyword search powered by Google Sheets
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.2-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-orange.svg)
 
@@ -10,11 +10,11 @@
 
 ## 📋 Overview
 
-The **Risk Search Tool** is an enterprise-grade application designed for KPMG teams to perform comprehensive risk assessments on companies. It automates Google searches across 32 high-risk keywords and maintains a centralized database of all searches in Google Sheets.
+The **Risk Search Tool** is an enterprise-grade application designed for KPMG teams to perform comprehensive risk assessments on companies. It automates Google searches using a selected keyword worksheet and maintains a centralized database of all searches in Google Sheets.
 
 ### ✨ Key Features
 
-- 🔍 **Automated Risk Screening** - Search companies against 32 risk keywords
+- 🔍 **Automated Risk Screening** - Choose between standard and Russian risk keyword sheets
 - ☁️ **Cloud Database** - All data stored in Google Sheets (zero conflicts)
 - 📊 **Real-time Collaboration** - Multiple users can search simultaneously
 - 📥 **Excel Export** - Download your search history anytime
@@ -108,6 +108,14 @@ That's it! The browser will open automatically.
 | Financial Crime | fraud | TRUE |
 | Legal & Regulatory | lawsuit | TRUE |
 
+**Sheet 3: Russian_Keyword_Sheet**
+| Category | Keyword | Active |
+|----------|---------|--------|
+| Russian Risk | Blacklist | TRUE |
+| Russian Risk | Russia | TRUE |
+
+The app creates this worksheet and adds the supplied Russian-risk keywords the first time it connects if the worksheet does not already exist. In the app, choose **Russian_Keyword_Sheet** from the keyword sheet selector and click **Select Keyword Sheet** before searching. Set `Active = FALSE` in the worksheet to disable any term.
+
 ### Local Backup
 
 Each user gets a local Excel backup:
@@ -138,11 +146,12 @@ https://docs.google.com/spreadsheets/d/1abc123xyz456/edit
 ### Manage Keywords
 
 1. Open your Google Sheet
-2. Go to "Keywords" tab
+2. Go to the "Keywords" or "Russian_Keyword_Sheet" tab
 3. Add/edit/disable keywords:
    - Set `Active = TRUE` to use keyword
    - Set `Active = FALSE` to disable
-4. Changes apply instantly for all users
+4. Select the matching worksheet in the app before searching
+5. Changes apply on the next search
 
 ---
 
@@ -295,18 +304,18 @@ python app.py
 ```bash
 # 1. Update version in config.py
 APP_CONFIG = {
-    "current_version": "2.0.1",  # Update this
+    "current_version": "2.0.2",  # Update this
 }
 
 # 2. Update version.json
 {
-  "version": "2.0.1",
+  "version": "2.0.2",
   "changes": ["Your changes here"]
 }
 
 # 3. Commit and push
 git add .
-git commit -m "Release v2.0.1"
+git commit -m "Release v2.0.2"
 git push origin main
 ```
 
@@ -351,6 +360,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 ## 📊 Version History
+
+### v2.0.2 (2026-09-27)
+- ✅ Added selectable Russian risk keyword sheet
 
 ### v2.0.0 (2025-02-15)
 - ✅ Moved to Google Sheets database

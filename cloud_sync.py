@@ -27,6 +27,7 @@ class CloudSync:
         self.sheet = None
         self.worksheet = None
         self.keywords_worksheet = None
+        self.russian_keywords_worksheet = None
         self._connect_to_google_sheets()
     
     def _connect_to_google_sheets(self):
@@ -95,6 +96,33 @@ class CloudSync:
                 # Add default 32 keywords
                 self._populate_default_keywords()
                 print("📄 Created 'Keywords' worksheet with 32 default keywords")
+
+            try:
+                self.russian_keywords_worksheet = self.sheet.worksheet(
+                    GOOGLE_SHEETS_CONFIG['russian_keywords_worksheet_name']
+                )
+                russian_sheet_values = self.russian_keywords_worksheet.get_all_values()
+                if not russian_sheet_values:
+                    self._initialize_russian_keywords_worksheet()
+                elif (
+                    len(russian_sheet_values) == 1
+                    and [cell.strip().lower() for cell in russian_sheet_values[0][:3]]
+                    == ['category', 'keyword', 'active']
+                ):
+                    self._populate_russian_keywords()
+                print("Found 'Russian_Keyword_Sheet' worksheet")
+            except gspread.exceptions.WorksheetNotFound:
+                self.russian_keywords_worksheet = self.sheet.add_worksheet(
+                    title=GOOGLE_SHEETS_CONFIG['russian_keywords_worksheet_name'],
+                    rows=100,
+                    cols=3
+                )
+                self._initialize_russian_keywords_worksheet()
+                print("Created 'Russian_Keyword_Sheet' with 20 keywords")
+            except Exception as e:
+                self.russian_keywords_worksheet = None
+                print(f"❌ Russian keyword sheet setup failed: {str(e)}")
+                print("⚠️ The standard Keywords worksheet remains available")
             
             print("✅ Connected to Google Sheets")
             
@@ -148,30 +176,106 @@ class CloudSync:
         
         print("✅ Added 32 default keywords to Google Sheet")
     
-    def get_keywords(self):
+    def _populate_russian_keywords(self):
+        """Populate the Russian risk keyword worksheet with its default terms"""
+        keywords_data = [
+            ['Russian Risk', 'Blacklist', 'TRUE'],
+            ['Russian Risk', 'Breach', 'TRUE'],
+            ['Russian Risk', 'Bribery', 'TRUE'],
+            ['Russian Risk', 'Crime', 'TRUE'],
+            ['Russian Risk', 'Criminal', 'TRUE'],
+            ['Russian Risk', 'Controversy', 'TRUE'],
+            ['Russian Risk', 'Controversial', 'TRUE'],
+            ['Russian Risk', 'Dispute', 'TRUE'],
+            ['Russian Risk', 'Drug', 'TRUE'],
+            ['Russian Risk', 'Fraud', 'TRUE'],
+            ['Russian Risk', 'Hacking', 'TRUE'],
+            ['Russian Risk', 'Litigation', 'TRUE'],
+            ['Russian Risk', 'Money Laundering', 'TRUE'],
+            ['Russian Risk', 'Proliferation', 'TRUE'],
+            ['Russian Risk', 'Smuggling', 'TRUE'],
+            ['Russian Risk', 'Terrorism', 'TRUE'],
+            ['Russian Risk', 'Terrorist', 'TRUE'],
+            ['Russian Risk', 'Trafficking', 'TRUE'],
+            ['Russian Risk', 'Weapon of Mass Destruction', 'TRUE'],
+            ['Russian Risk', 'Russia', 'TRUE'],
+        ]
+        self.russian_keywords_worksheet.append_rows(keywords_data)
+
+    def _initialize_russian_keywords_worksheet(self):
+        """Set up headers and default keywords on a new or empty worksheet"""
+        self.russian_keywords_worksheet.update(
+            'A1:C1',
+            [['Category', 'Keyword', 'Active']]
+        )
+        self.russian_keywords_worksheet.format('A1:C1', {
+            'backgroundColor': {'red': 0.27, 'green': 0.45, 'blue': 0.77},
+            'textFormat': {
+                'bold': True,
+                'foregroundColor': {'red': 1, 'green': 1, 'blue': 1}
+            }
+        })
+        self._populate_russian_keywords()
+
+    def get_keyword_sheets(self):
+        """Return keyword worksheets that users can select in the search form"""
+        return [
+            {
+                'name': GOOGLE_SHEETS_CONFIG['keywords_worksheet_name'],
+                'label': 'Standard Keywords'
+            },
+            {
+                'name': GOOGLE_SHEETS_CONFIG['russian_keywords_worksheet_name'],
+                'label': 'Russian_Keyword_Sheet'
+            }
+        ]
+
+    @staticmethod
+    def _extract_active_keywords(all_values):
+        keywords = []
+        for row in all_values[1:]:
+            if len(row) >= 3:
+                keyword = row[1]
+                active = row[2].upper()
+                if active in ['TRUE', 'YES', '1', 'CHECKED', 'X']:
+                    if keyword and keyword.strip():
+                        keywords.append(keyword.strip())
+        return keywords
+
+    def get_keywords(self, worksheet_name=None):
         """
-        Get keywords from Google Sheets Keywords worksheet
+        Get active keywords from the selected Google Sheets worksheet
         Reads all active keywords (where Active column = TRUE)
         """
-        
+
+        standard_sheet_name = GOOGLE_SHEETS_CONFIG['keywords_worksheet_name']
+        russian_sheet_name = GOOGLE_SHEETS_CONFIG['russian_keywords_worksheet_name']
+        worksheet_name = worksheet_name or standard_sheet_name
+
+        if worksheet_name == russian_sheet_name:
+            if self.russian_keywords_worksheet is None:
+                raise RuntimeError(
+                    f"'{russian_sheet_name}' is unavailable. Check the Google Sheets connection."
+                )
+            try:
+                keywords = self._extract_active_keywords(
+                    self.russian_keywords_worksheet.get_all_values()
+                )
+                print(f"Loaded {len(keywords)} keywords from '{russian_sheet_name}'")
+                return keywords
+            except Exception as e:
+                raise RuntimeError(
+                    f"Could not read keywords from '{russian_sheet_name}': {str(e)}"
+                ) from e
+
+        if worksheet_name != standard_sheet_name:
+            raise ValueError(f"Unknown keyword worksheet: {worksheet_name}")
+
         if self.keywords_worksheet is not None:
             try:
                 # Get all values from Keywords sheet
                 all_values = self.keywords_worksheet.get_all_values()
-                
-                # Skip header row and extract active keywords
-                keywords = []
-                for row in all_values[1:]:  # Skip header
-                    if len(row) >= 3:
-                        category = row[0]
-                        keyword = row[1]
-                        active = row[2].upper()
-                        
-                        # Check if active (TRUE, YES, 1, or checked)
-                        if active in ['TRUE', 'YES', '1', 'CHECKED', 'X']:
-                            if keyword and keyword.strip():
-                                keywords.append(keyword.strip())
-                
+                keywords = self._extract_active_keywords(all_values)
                 print(f"📋 Loaded {len(keywords)} keywords from Google Sheets")
                 return keywords
             

@@ -12,7 +12,7 @@ import os
 # Import cloud modules
 from cloud_sync import CloudSync
 from auto_updater import AutoUpdater
-from config import APP_CONFIG, LOCAL_FILES
+from config import APP_CONFIG, GOOGLE_SHEETS_CONFIG, LOCAL_FILES
 
 app = Flask(__name__)
 
@@ -55,23 +55,42 @@ def index():
                          total_keywords=len(keywords),
                          recent_searches=recent_searches,
                          app_version=APP_CONFIG['current_version'],
-                         my_search_count=my_search_count)
+                         my_search_count=my_search_count,
+                         keyword_sheets=cloud.get_keyword_sheets(),
+                         default_keyword_sheet=GOOGLE_SHEETS_CONFIG['keywords_worksheet_name'])
 
 
 @app.route('/search', methods=['POST'])
 def search():
     """Process search request"""
     data = request.get_json()
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'message': 'Invalid search request'}), 400
+
     client_names = data.get('clients', '')
+    keyword_sheet = data.get(
+        'keyword_sheet',
+        GOOGLE_SHEETS_CONFIG['keywords_worksheet_name']
+    )
     
     if not client_names:
         return jsonify({'success': False, 'message': 'No client names provided'})
+
+    if not isinstance(keyword_sheet, str):
+        return jsonify({'success': False, 'message': 'Invalid keyword sheet'}), 400
     
-    # Get keywords from cloud
-    keywords = cloud.get_keywords()
+    try:
+        keywords = cloud.get_keywords(keyword_sheet)
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+    except RuntimeError as e:
+        return jsonify({'success': False, 'message': str(e)}), 503
     
     if not keywords:
-        return jsonify({'success': False, 'message': 'No keywords available'})
+        return jsonify({
+            'success': False,
+            'message': f"No active keywords available in '{keyword_sheet}'"
+        })
     
     # Parse client names
     clients = [c.strip() for c in client_names.split(',') if c.strip()]
@@ -106,7 +125,7 @@ def search():
     
     return jsonify({
         'success': True,
-        'message': f'Generated {len(results)} search link(s)',
+        'message': f"Generated {len(results)} search link(s) using '{keyword_sheet}'",
         'results': results,
         'total_records': total_records
     })

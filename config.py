@@ -60,6 +60,7 @@ GOOGLE_SHEETS_CONFIG = {
     # Worksheet names
     "worksheet_name": "Risk Searches",
     "keywords_worksheet_name": "Keywords",
+    "russian_keywords_worksheet_name": "Russian_Keyword_Sheet",
 }
 
 # ============================================================================
@@ -79,7 +80,7 @@ GITHUB_CONFIG = {
 
 APP_CONFIG = {
     "app_name": "Risk Search Tool",
-    "current_version": "2.0.0",
+    "current_version": "2.0.2",
     "debug_mode": False,
     "host": "127.0.0.1",
     "port": 5000,
