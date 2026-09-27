@@ -84,6 +84,7 @@ class AutoUpdater:
                 'auto_updater.py',
                 'requirements.txt',
                 'templates/index.html',
+                'static/style.css',
             ]
             
             # DO NOT UPDATE config.py - it has embedded credentials

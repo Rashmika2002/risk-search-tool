@@ -70,7 +70,7 @@ GOOGLE_SHEETS_CONFIG = {
 GITHUB_CONFIG = {
     "repo_owner": "Rashmika2002",
     "repo_name": "risk-search-tool",
-    "branch": "main",
+    "branch": "master",
     "auto_update": False,
 }
 

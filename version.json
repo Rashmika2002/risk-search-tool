@@ -6,7 +6,8 @@
     "Keywords now in Google Sheets",
     "Embedded credentials for security",
     "Improved auto-update from GitHub",
-    "Added selectable Russian risk keyword sheet"
+    "Added selectable Russian risk keyword sheet",
+    "Improved update compatibility for existing installations"
   ],
   "critical_update": false
 }

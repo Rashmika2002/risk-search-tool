@@ -17,6 +17,11 @@ import time
 import getpass
 from config import GOOGLE_SHEETS_CONFIG, LOCAL_FILES, EXCEL_HEADERS
 
+RUSSIAN_KEYWORDS_WORKSHEET_NAME = GOOGLE_SHEETS_CONFIG.get(
+    'russian_keywords_worksheet_name',
+    'Russian_Keyword_Sheet'
+)
+
 
 class CloudSync:
     """Manages synchronization with Google Sheets"""
@@ -99,7 +104,7 @@ class CloudSync:
 
             try:
                 self.russian_keywords_worksheet = self.sheet.worksheet(
-                    GOOGLE_SHEETS_CONFIG['russian_keywords_worksheet_name']
+                    RUSSIAN_KEYWORDS_WORKSHEET_NAME
                 )
                 russian_sheet_values = self.russian_keywords_worksheet.get_all_values()
                 if not russian_sheet_values:
@@ -113,7 +118,7 @@ class CloudSync:
                 print("Found 'Russian_Keyword_Sheet' worksheet")
             except gspread.exceptions.WorksheetNotFound:
                 self.russian_keywords_worksheet = self.sheet.add_worksheet(
-                    title=GOOGLE_SHEETS_CONFIG['russian_keywords_worksheet_name'],
+                    title=RUSSIAN_KEYWORDS_WORKSHEET_NAME,
                     rows=100,
                     cols=3
                 )
@@ -225,7 +230,7 @@ class CloudSync:
                 'label': 'Standard Keywords'
             },
             {
-                'name': GOOGLE_SHEETS_CONFIG['russian_keywords_worksheet_name'],
+                'name': RUSSIAN_KEYWORDS_WORKSHEET_NAME,
                 'label': 'Russian_Keyword_Sheet'
             }
         ]
@@ -249,7 +254,7 @@ class CloudSync:
         """
 
         standard_sheet_name = GOOGLE_SHEETS_CONFIG['keywords_worksheet_name']
-        russian_sheet_name = GOOGLE_SHEETS_CONFIG['russian_keywords_worksheet_name']
+        russian_sheet_name = RUSSIAN_KEYWORDS_WORKSHEET_NAME
         worksheet_name = worksheet_name or standard_sheet_name
 
         if worksheet_name == russian_sheet_name:

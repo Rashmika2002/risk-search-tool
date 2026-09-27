@@ -302,22 +302,28 @@ python app.py
 ### Create New Release
 
 ```bash
-# 1. Update version in config.py
+# 1. Update the runtime version in app.py
+APP_CONFIG['current_version'] = "2.0.2"
+
+# 2. Keep the version in config.py in sync for new installations
 APP_CONFIG = {
     "current_version": "2.0.2",  # Update this
 }
 
-# 2. Update version.json
+# 3. Update version.json
 {
   "version": "2.0.2",
   "changes": ["Your changes here"]
 }
 
-# 3. Commit and push
+# 4. Commit and publish to both branches
 git add .
 git commit -m "Release v2.0.2"
-git push origin main
+git push origin HEAD:master
+git push origin HEAD:main
 ```
+
+The updater now reads releases from `master`. Keep the `main` branch updated with each release for installations that still use the legacy `main` update URL.
 
 ---
 
@@ -363,6 +369,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### v2.0.2 (2026-09-27)
 - ✅ Added selectable Russian risk keyword sheet
+- ✅ Improved update compatibility for existing installations
 
 ### v2.0.0 (2025-02-15)
 - ✅ Moved to Google Sheets database

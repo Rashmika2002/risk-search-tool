@@ -14,6 +14,9 @@ from cloud_sync import CloudSync
 from auto_updater import AutoUpdater
 from config import APP_CONFIG, GOOGLE_SHEETS_CONFIG, LOCAL_FILES
 
+# The updater does not replace config.py because it contains installation credentials.
+APP_CONFIG['current_version'] = '2.0.2'
+
 app = Flask(__name__)
 
 # Initialize cloud sync
