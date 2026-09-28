@@ -1,13 +1,11 @@
 {
-  "version": "2.0.2",
-  "release_date": "2026-09-27",
+  "version": "2.0.1",
+  "release_date": "2026-09-28",
   "changes": [
     "Removed OneDrive dependency",
     "Keywords now in Google Sheets",
     "Embedded credentials for security",
-    "Improved auto-update from GitHub",
-    "Added selectable Russian risk keyword sheet",
-    "Improved update compatibility for existing installations"
+    "Improved auto-update from GitHub"
   ],
   "critical_update": false
 }
