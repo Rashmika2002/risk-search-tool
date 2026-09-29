@@ -1,11 +1,13 @@
 {
   "version": "2.0.1",
-  "release_date": "2026-03-04",
+  "release_date": "2025-02-15",
   "changes": [
-    "Removed OneDrive dependency",
-    "Keywords now in Google Sheets",
+    "Moved to Google Sheets database",
+    "Keywords now managed in Google Sheets",
     "Embedded credentials for security",
-    "Improved auto-update from GitHub"
+    "Removed OneDrive dependency",
+    "GitHub-based auto-updates",
+    "Improved one-click launcher"
   ],
   "critical_update": false
 }

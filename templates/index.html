@@ -13,7 +13,7 @@
         <!-- Header -->
         <div class="header">
              <h1>🔍 Risk Search Tool</h1>
-            <p>Comprehensive company risk screening with 32 high-risk keywords</p>
+            <p>Comprehensive company risk screening with selectable keyword sheets</p>
             <img src="{{ url_for('static', filename='logo.png') }}" alt="Company Logo" class="header-logo">
 </div>
         <!-- Statistics -->
@@ -35,6 +35,17 @@
                 
                 <div class="alert" id="alertBox"></div>
                 
+                <div class="input-group">
+                    <label for="keywordSheet">Keyword sheet</label>
+                    <select id="keywordSheet">
+                        {% for sheet in keyword_sheets %}
+                        <option value="{{ sheet.name }}">{{ sheet.label }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn btn-secondary keyword-sheet-button" type="button" onclick="selectKeywordSheet()">Select Keyword Sheet</button>
+                    <p class="keyword-sheet-status" id="keywordSheetStatus" aria-live="polite"></p>
+                </div>
+
                 <div class="input-group">
                     <label for="clientNames">Company/Client Names (separate with commas)</label>
                     <input 
@@ -92,10 +103,23 @@
 </div>
 
     <script>
-    // Wait for page to fully load
-    window.addEventListener('DOMContentLoaded', function() {
-        // Fetch stats
-        fetchStats();
+const defaultKeywordSheet = {{ default_keyword_sheet|tojson }};
+let activeKeywordSheet = defaultKeywordSheet;
+
+// Wait for page to fully load
+window.addEventListener('DOMContentLoaded', function() {
+    const keywordSheetSelect = document.getElementById('keywordSheet');
+    if (keywordSheetSelect) {
+        const savedKeywordSheet = localStorage.getItem('selectedKeywordSheet');
+        const isAvailable = Array.from(keywordSheetSelect.options)
+            .some(option => option.value === savedKeywordSheet);
+        activeKeywordSheet = isAvailable ? savedKeywordSheet : defaultKeywordSheet;
+        keywordSheetSelect.value = activeKeywordSheet;
+        updateKeywordSheetStatus();
+    }
+
+    // Fetch stats
+    fetchStats();
         
         // Add Enter key listener
         const clientInput = document.getElementById('clientNames');
@@ -107,6 +131,24 @@
             });
         }
     });
+
+    function selectKeywordSheet() {
+        const keywordSheetSelect = document.getElementById('keywordSheet');
+        if (!keywordSheetSelect) return;
+
+        activeKeywordSheet = keywordSheetSelect.value;
+        localStorage.setItem('selectedKeywordSheet', activeKeywordSheet);
+        updateKeywordSheetStatus();
+    }
+
+    function updateKeywordSheetStatus() {
+        const keywordSheetSelect = document.getElementById('keywordSheet');
+        const status = document.getElementById('keywordSheetStatus');
+        if (!keywordSheetSelect || !status) return;
+
+        const selectedOption = keywordSheetSelect.options[keywordSheetSelect.selectedIndex];
+        status.textContent = `Searches will use: ${selectedOption.textContent}`;
+    }
 
     function fetchStats() {
         fetch('/stats')
@@ -145,7 +187,10 @@
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ clients: clientNames })
+        body: JSON.stringify({
+            clients: clientNames,
+            keyword_sheet: activeKeywordSheet
+        })
     })
     .then(response => response.json())
     .then(data => {
