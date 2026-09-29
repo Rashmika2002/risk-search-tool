@@ -69,8 +69,8 @@ GOOGLE_SHEETS_CONFIG = {
 GITHUB_CONFIG = {
     "repo_owner": "Rashmika2002",
     "repo_name": "risk-search-tool",
-    "branch": "main",
-    "auto_update": False,
+    "branch": "feature/risk-search-tool-2.0",
+    "auto_update": True,
 }
 
 # ============================================================================
