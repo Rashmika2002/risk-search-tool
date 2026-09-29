@@ -1,13 +1,18 @@
 {
-  "version": "2.0.1",
-  "release_date": "2025-02-15",
+  "version": "2.0.2",
+  "release_date": "2026-09-29",
   "changes": [
-    "Moved to Google Sheets database",
-    "Keywords now managed in Google Sheets",
-    "Embedded credentials for security",
-    "Removed OneDrive dependency",
-    "GitHub-based auto-updates",
-    "Improved one-click launcher"
+    "Fixed endless update loop",
+    "Safer all-or-nothing updates with backups"
+  ],
+  "files": [
+    "app.py",
+    "cloud_sync.py",
+    "auto_updater.py",
+    "requirements.txt",
+    "templates/index.html",
+    "static/style.css",
+    "static/logo.png"
   ],
   "critical_update": false
 }
