@@ -60,7 +60,8 @@ GOOGLE_SHEETS_CONFIG = {
     # Worksheet names
     "worksheet_name": "Risk Searches",
     "keywords_worksheet_name": "Keywords",
-    "russian_keywords_worksheet_name": "Russian_Keyword_Sheet",
+    "kuwait_keywords_worksheet_name": "Kuwait keywords Sheet",
+    "criminal_conviction_worksheet_name": "Criminal_Conviction_Keywords",
 }
 
 # ============================================================================

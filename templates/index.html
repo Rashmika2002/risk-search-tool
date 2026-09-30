@@ -105,6 +105,7 @@
     <script>
 const defaultKeywordSheet = {{ default_keyword_sheet|tojson }};
 let activeKeywordSheet = defaultKeywordSheet;
+let confirmedKeywordSheet = null;
 
 // Wait for page to fully load
 window.addEventListener('DOMContentLoaded', function() {
@@ -116,6 +117,10 @@ window.addEventListener('DOMContentLoaded', function() {
         activeKeywordSheet = isAvailable ? savedKeywordSheet : defaultKeywordSheet;
         keywordSheetSelect.value = activeKeywordSheet;
         updateKeywordSheetStatus();
+        keywordSheetSelect.addEventListener('change', function() {
+            confirmedKeywordSheet = null;
+            updateKeywordSheetStatus();
+        });
     }
 
     // Fetch stats
@@ -137,14 +142,21 @@ window.addEventListener('DOMContentLoaded', function() {
         if (!keywordSheetSelect) return;
 
         activeKeywordSheet = keywordSheetSelect.value;
+        confirmedKeywordSheet = activeKeywordSheet;
         localStorage.setItem('selectedKeywordSheet', activeKeywordSheet);
         updateKeywordSheetStatus();
+        hideAlert();
     }
 
     function updateKeywordSheetStatus() {
         const keywordSheetSelect = document.getElementById('keywordSheet');
         const status = document.getElementById('keywordSheetStatus');
         if (!keywordSheetSelect || !status) return;
+
+        if (!confirmedKeywordSheet || confirmedKeywordSheet !== keywordSheetSelect.value) {
+            status.textContent = 'Select a keyword sheet and click "Select Keyword Sheet" before searching.';
+            return;
+        }
 
         const selectedOption = keywordSheetSelect.options[keywordSheetSelect.selectedIndex];
         status.textContent = `Searches will use: ${selectedOption.textContent}`;
@@ -161,6 +173,16 @@ window.addEventListener('DOMContentLoaded', function() {
     }
 
    function performSearch() {
+    const keywordSheetSelect = document.getElementById('keywordSheet');
+    if (
+        !keywordSheetSelect ||
+        !confirmedKeywordSheet ||
+        confirmedKeywordSheet !== keywordSheetSelect.value
+    ) {
+        showAlert('Please select a keyword sheet and click "Select Keyword Sheet" before searching.', 'error');
+        return;
+    }
+
     const clientNamesInput = document.getElementById('clientNames');
     if (!clientNamesInput) {
         console.error('clientNames input not found');

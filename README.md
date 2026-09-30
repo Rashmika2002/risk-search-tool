@@ -14,7 +14,7 @@ The **Risk Search Tool** is an enterprise-grade application designed for KPMG te
 
 ### ✨ Key Features
 
-- 🔍 **Automated Risk Screening** - Choose between standard and Russian risk keyword sheets
+- 🔍 **Automated Risk Screening** - Choose between standard, Kuwait, or Criminal Conviction keyword sheets
 - ☁️ **Cloud Database** - All data stored in Google Sheets (zero conflicts)
 - 📊 **Real-time Collaboration** - Multiple users can search simultaneously
 - 📥 **Excel Export** - Download your search history anytime
@@ -58,11 +58,13 @@ That's it! The browser will open automatically.
    HNBA, Ceylinco Life, Vallibel Finance
    ```
 
-2. **Click "Generate Search Links"**
+2. **Choose a keyword sheet and click "Select Keyword Sheet"**
 
-3. **Search tabs open automatically** - Review Google results
+3. **Click "Generate Search Links"**
 
-4. **Data saved to Google Sheets** - Accessible to entire team
+4. **Search tabs open automatically** - Review Google results
+
+5. **Data saved to Google Sheets** - Accessible to entire team
 
 ### Download Your Searches
 
@@ -108,13 +110,17 @@ That's it! The browser will open automatically.
 | Financial Crime | fraud | TRUE |
 | Legal & Regulatory | lawsuit | TRUE |
 
-**Sheet 3: Russian_Keyword_Sheet**
+**Sheet 3: Kuwait keywords Sheet**
 | Category | Keyword | Active |
 |----------|---------|--------|
 | Russian Risk | Blacklist | TRUE |
 | Russian Risk | Russia | TRUE |
 
-The app creates this worksheet and adds the supplied Russian-risk keywords the first time it connects if the worksheet does not already exist. In the app, choose **Russian_Keyword_Sheet** from the keyword sheet selector and click **Select Keyword Sheet** before searching. Set `Active = FALSE` in the worksheet to disable any term.
+The app renames an existing `Russian_Keyword_Sheet` to `Kuwait keywords Sheet` on its next connection, preserving its contents. If neither sheet exists, it creates the Kuwait worksheet and adds the supplied keywords.
+
+**Sheet 4: Criminal_Conviction_Keywords**
+
+This worksheet is created with all active/inactive rows from the standard **Keywords** sheet plus an active **Criminal Conviction** keyword. In the app, choose **Standard + Criminal Conviction** from the keyword sheet selector to use it. Set `Active = FALSE` in the worksheet to disable any term.
 
 ### Local Backup
 
@@ -146,7 +152,7 @@ https://docs.google.com/spreadsheets/d/1abc123xyz456/edit
 ### Manage Keywords
 
 1. Open your Google Sheet
-2. Go to the "Keywords" or "Russian_Keyword_Sheet" tab
+2. Go to the "Keywords", "Kuwait keywords Sheet", or "Criminal_Conviction_Keywords" tab
 3. Add/edit/disable keywords:
    - Set `Active = TRUE` to use keyword
    - Set `Active = FALSE` to disable
@@ -368,7 +374,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📊 Version History
 
 ### v2.0.2 (2026-09-27)
-- ✅ Added selectable Russian risk keyword sheet
+- ✅ Added selectable Kuwait and Criminal Conviction keyword sheets
 - ✅ Improved update compatibility for existing installations
 
 ### v2.0.0 (2025-02-15)

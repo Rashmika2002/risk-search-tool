@@ -155,6 +155,18 @@ body {
 
 .keyword-sheet-button {
     margin: 12px 0 0;
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.keyword-sheet-button:hover {
+    background: linear-gradient(to right, #5d6d7e, #7f8c8d);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+.keyword-sheet-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .keyword-sheet-status {

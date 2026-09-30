@@ -17,9 +17,48 @@ import time
 import getpass
 from config import GOOGLE_SHEETS_CONFIG, LOCAL_FILES, EXCEL_HEADERS
 
-RUSSIAN_KEYWORDS_WORKSHEET_NAME = GOOGLE_SHEETS_CONFIG.get(
-    'russian_keywords_worksheet_name',
-    'Russian_Keyword_Sheet'
+KUWAIT_KEYWORDS_WORKSHEET_NAME = GOOGLE_SHEETS_CONFIG.get(
+    'kuwait_keywords_worksheet_name',
+    'Kuwait keywords Sheet'
+)
+LEGACY_RUSSIAN_KEYWORDS_WORKSHEET_NAME = 'Russian_Keyword_Sheet'
+CRIMINAL_CONVICTION_WORKSHEET_NAME = GOOGLE_SHEETS_CONFIG.get(
+    'criminal_conviction_worksheet_name',
+    'Criminal_Conviction_Keywords'
+)
+DEFAULT_STANDARD_KEYWORDS = (
+    ('Financial Crime', 'fraud', 'TRUE'),
+    ('Financial Crime', 'corruption', 'TRUE'),
+    ('Financial Crime', 'bribery', 'TRUE'),
+    ('Financial Crime', 'money laundering', 'TRUE'),
+    ('Financial Crime', 'terrorist financing', 'TRUE'),
+    ('Financial Crime', 'sanctions violation', 'TRUE'),
+    ('Financial Crime', 'embezzlement', 'TRUE'),
+    ('Financial Crime', 'tax evasion', 'TRUE'),
+    ('Legal & Regulatory', 'lawsuit', 'TRUE'),
+    ('Legal & Regulatory', 'litigation', 'TRUE'),
+    ('Legal & Regulatory', 'court case', 'TRUE'),
+    ('Legal & Regulatory', 'regulatory action', 'TRUE'),
+    ('Legal & Regulatory', 'enforcement action', 'TRUE'),
+    ('Legal & Regulatory', 'compliance breach', 'TRUE'),
+    ('Human Rights & Labour', 'human rights violation', 'TRUE'),
+    ('Human Rights & Labour', 'forced labour', 'TRUE'),
+    ('Human Rights & Labour', 'child labour', 'TRUE'),
+    ('Human Rights & Labour', 'discrimination at work', 'TRUE'),
+    ('Human Rights & Labour', 'labour law violation', 'TRUE'),
+    ('Human Rights & Labour', 'union suppression', 'TRUE'),
+    ('Human Rights & Labour', 'collective bargaining restriction', 'TRUE'),
+    ('Human Rights & Labour', 'unsafe working conditions', 'TRUE'),
+    ('Environmental & ESG', 'environmental damage', 'TRUE'),
+    ('Environmental & ESG', 'pollution incident', 'TRUE'),
+    ('Environmental & ESG', 'environmental negligence', 'TRUE'),
+    ('Environmental & ESG', 'toxic waste', 'TRUE'),
+    ('Governance & Ethics', 'management misconduct', 'TRUE'),
+    ('Governance & Ethics', 'governance failure', 'TRUE'),
+    ('Governance & Ethics', 'ethics violation', 'TRUE'),
+    ('Governance & Ethics', 'whistleblower allegation', 'TRUE'),
+    ('Cyber & Data', 'data breach', 'TRUE'),
+    ('Cyber & Data', 'leaked documents', 'TRUE'),
 )
 
 
@@ -32,7 +71,8 @@ class CloudSync:
         self.sheet = None
         self.worksheet = None
         self.keywords_worksheet = None
-        self.russian_keywords_worksheet = None
+        self.kuwait_keywords_worksheet = None
+        self.criminal_conviction_worksheet = None
         self._connect_to_google_sheets()
     
     def _connect_to_google_sheets(self):
@@ -103,31 +143,75 @@ class CloudSync:
                 print("📄 Created 'Keywords' worksheet with 32 default keywords")
 
             try:
-                self.russian_keywords_worksheet = self.sheet.worksheet(
-                    RUSSIAN_KEYWORDS_WORKSHEET_NAME
-                )
-                russian_sheet_values = self.russian_keywords_worksheet.get_all_values()
-                if not russian_sheet_values:
-                    self._initialize_russian_keywords_worksheet()
+                try:
+                    self.kuwait_keywords_worksheet = self.sheet.worksheet(
+                        KUWAIT_KEYWORDS_WORKSHEET_NAME
+                    )
+                except gspread.exceptions.WorksheetNotFound:
+                    try:
+                        self.kuwait_keywords_worksheet = self.sheet.worksheet(
+                            LEGACY_RUSSIAN_KEYWORDS_WORKSHEET_NAME
+                        )
+                        self.kuwait_keywords_worksheet.update_title(
+                            KUWAIT_KEYWORDS_WORKSHEET_NAME
+                        )
+                        print(
+                            f"Renamed '{LEGACY_RUSSIAN_KEYWORDS_WORKSHEET_NAME}' "
+                            f"to '{KUWAIT_KEYWORDS_WORKSHEET_NAME}'"
+                        )
+                    except gspread.exceptions.WorksheetNotFound:
+                        self.kuwait_keywords_worksheet = self.sheet.add_worksheet(
+                            title=KUWAIT_KEYWORDS_WORKSHEET_NAME,
+                            rows=100,
+                            cols=3
+                        )
+                        self._initialize_kuwait_keywords_worksheet()
+                        print(f"Created '{KUWAIT_KEYWORDS_WORKSHEET_NAME}' with 20 keywords")
+
+                kuwait_sheet_values = self.kuwait_keywords_worksheet.get_all_values()
+                if not kuwait_sheet_values:
+                    self._initialize_kuwait_keywords_worksheet()
                 elif (
-                    len(russian_sheet_values) == 1
-                    and [cell.strip().lower() for cell in russian_sheet_values[0][:3]]
+                    len(kuwait_sheet_values) == 1
+                    and [cell.strip().lower() for cell in kuwait_sheet_values[0][:3]]
                     == ['category', 'keyword', 'active']
                 ):
-                    self._populate_russian_keywords()
-                print("Found 'Russian_Keyword_Sheet' worksheet")
+                    self._populate_kuwait_keywords()
+                print(f"Found '{KUWAIT_KEYWORDS_WORKSHEET_NAME}' worksheet")
+            except Exception as e:
+                self.kuwait_keywords_worksheet = None
+                print(f"❌ Kuwait keyword sheet setup failed: {str(e)}")
+                print("⚠️ The standard Keywords worksheet remains available")
+
+            try:
+                self.criminal_conviction_worksheet = self.sheet.worksheet(
+                    CRIMINAL_CONVICTION_WORKSHEET_NAME
+                )
+                criminal_sheet_values = self.criminal_conviction_worksheet.get_all_values()
+                if not criminal_sheet_values:
+                    self._initialize_criminal_conviction_worksheet()
+                elif (
+                    len(criminal_sheet_values) == 1
+                    and [cell.strip().lower() for cell in criminal_sheet_values[0][:3]]
+                    == ['category', 'keyword', 'active']
+                ):
+                    self._populate_criminal_conviction_keywords()
+                print(f"Found '{CRIMINAL_CONVICTION_WORKSHEET_NAME}' worksheet")
             except gspread.exceptions.WorksheetNotFound:
-                self.russian_keywords_worksheet = self.sheet.add_worksheet(
-                    title=RUSSIAN_KEYWORDS_WORKSHEET_NAME,
+                self.criminal_conviction_worksheet = self.sheet.add_worksheet(
+                    title=CRIMINAL_CONVICTION_WORKSHEET_NAME,
                     rows=100,
                     cols=3
                 )
-                self._initialize_russian_keywords_worksheet()
-                print("Created 'Russian_Keyword_Sheet' with 20 keywords")
+                self._initialize_criminal_conviction_worksheet()
+                print(
+                    f"Created '{CRIMINAL_CONVICTION_WORKSHEET_NAME}' "
+                    "with standard keywords and Criminal Conviction"
+                )
             except Exception as e:
-                self.russian_keywords_worksheet = None
-                print(f"❌ Russian keyword sheet setup failed: {str(e)}")
-                print("⚠️ The standard Keywords worksheet remains available")
+                self.criminal_conviction_worksheet = None
+                print(f"❌ Criminal Conviction keyword sheet setup failed: {str(e)}")
+                print("⚠️ The other keyword worksheets remain available")
             
             print("✅ Connected to Google Sheets")
             
@@ -140,49 +224,16 @@ class CloudSync:
     
     def _populate_default_keywords(self):
         """Populate Keywords worksheet with default 32 keywords"""
-        
-        keywords_data = [
-            ['Financial Crime', 'fraud', 'TRUE'],
-            ['Financial Crime', 'corruption', 'TRUE'],
-            ['Financial Crime', 'bribery', 'TRUE'],
-            ['Financial Crime', 'money laundering', 'TRUE'],
-            ['Financial Crime', 'terrorist financing', 'TRUE'],
-            ['Financial Crime', 'sanctions violation', 'TRUE'],
-            ['Financial Crime', 'embezzlement', 'TRUE'],
-            ['Financial Crime', 'tax evasion', 'TRUE'],
-            ['Legal & Regulatory', 'lawsuit', 'TRUE'],
-            ['Legal & Regulatory', 'litigation', 'TRUE'],
-            ['Legal & Regulatory', 'court case', 'TRUE'],
-            ['Legal & Regulatory', 'regulatory action', 'TRUE'],
-            ['Legal & Regulatory', 'enforcement action', 'TRUE'],
-            ['Legal & Regulatory', 'compliance breach', 'TRUE'],
-            ['Human Rights & Labour', 'human rights violation', 'TRUE'],
-            ['Human Rights & Labour', 'forced labour', 'TRUE'],
-            ['Human Rights & Labour', 'child labour', 'TRUE'],
-            ['Human Rights & Labour', 'discrimination at work', 'TRUE'],
-            ['Human Rights & Labour', 'labour law violation', 'TRUE'],
-            ['Human Rights & Labour', 'union suppression', 'TRUE'],
-            ['Human Rights & Labour', 'collective bargaining restriction', 'TRUE'],
-            ['Human Rights & Labour', 'unsafe working conditions', 'TRUE'],
-            ['Environmental & ESG', 'environmental damage', 'TRUE'],
-            ['Environmental & ESG', 'pollution incident', 'TRUE'],
-            ['Environmental & ESG', 'environmental negligence', 'TRUE'],
-            ['Environmental & ESG', 'toxic waste', 'TRUE'],
-            ['Governance & Ethics', 'management misconduct', 'TRUE'],
-            ['Governance & Ethics', 'governance failure', 'TRUE'],
-            ['Governance & Ethics', 'ethics violation', 'TRUE'],
-            ['Governance & Ethics', 'whistleblower allegation', 'TRUE'],
-            ['Cyber & Data', 'data breach', 'TRUE'],
-            ['Cyber & Data', 'leaked documents', 'TRUE'],
-        ]
-        
+
         # Append all keywords at once (starts from row 2)
-        self.keywords_worksheet.append_rows(keywords_data)
-        
+        self.keywords_worksheet.append_rows(
+            [list(keyword_row) for keyword_row in DEFAULT_STANDARD_KEYWORDS]
+        )
+
         print("✅ Added 32 default keywords to Google Sheet")
     
-    def _populate_russian_keywords(self):
-        """Populate the Russian risk keyword worksheet with its default terms"""
+    def _populate_kuwait_keywords(self):
+        """Populate the Kuwait keyword worksheet with its default terms"""
         keywords_data = [
             ['Russian Risk', 'Blacklist', 'TRUE'],
             ['Russian Risk', 'Breach', 'TRUE'],
@@ -205,22 +256,51 @@ class CloudSync:
             ['Russian Risk', 'Weapon of Mass Destruction', 'TRUE'],
             ['Russian Risk', 'Russia', 'TRUE'],
         ]
-        self.russian_keywords_worksheet.append_rows(keywords_data)
+        self.kuwait_keywords_worksheet.append_rows(keywords_data)
 
-    def _initialize_russian_keywords_worksheet(self):
+    def _initialize_kuwait_keywords_worksheet(self):
         """Set up headers and default keywords on a new or empty worksheet"""
-        self.russian_keywords_worksheet.update(
+        self.kuwait_keywords_worksheet.update(
             'A1:C1',
             [['Category', 'Keyword', 'Active']]
         )
-        self.russian_keywords_worksheet.format('A1:C1', {
+        self.kuwait_keywords_worksheet.format('A1:C1', {
             'backgroundColor': {'red': 0.27, 'green': 0.45, 'blue': 0.77},
             'textFormat': {
                 'bold': True,
                 'foregroundColor': {'red': 1, 'green': 1, 'blue': 1}
             }
         })
-        self._populate_russian_keywords()
+        self._populate_kuwait_keywords()
+
+    def _populate_criminal_conviction_keywords(self):
+        """Copy standard keywords and add the Criminal Conviction term."""
+        standard_values = self.keywords_worksheet.get_all_values()
+        keywords_data = [
+            row[:3] for row in standard_values[1:]
+            if len(row) >= 3 and any(cell.strip() for cell in row[:3])
+        ]
+        if not keywords_data:
+            keywords_data = [
+                list(keyword_row) for keyword_row in DEFAULT_STANDARD_KEYWORDS
+            ]
+        keywords_data.append(['Legal & Regulatory', 'Criminal Conviction', 'TRUE'])
+        self.criminal_conviction_worksheet.append_rows(keywords_data)
+
+    def _initialize_criminal_conviction_worksheet(self):
+        """Set up the Criminal Conviction worksheet with standard keywords."""
+        self.criminal_conviction_worksheet.update(
+            'A1:C1',
+            [['Category', 'Keyword', 'Active']]
+        )
+        self.criminal_conviction_worksheet.format('A1:C1', {
+            'backgroundColor': {'red': 0.27, 'green': 0.45, 'blue': 0.77},
+            'textFormat': {
+                'bold': True,
+                'foregroundColor': {'red': 1, 'green': 1, 'blue': 1}
+            }
+        })
+        self._populate_criminal_conviction_keywords()
 
     def get_keyword_sheets(self):
         """Return keyword worksheets that users can select in the search form"""
@@ -230,8 +310,12 @@ class CloudSync:
                 'label': 'Standard Keywords'
             },
             {
-                'name': RUSSIAN_KEYWORDS_WORKSHEET_NAME,
-                'label': 'Russian_Keyword_Sheet'
+                'name': KUWAIT_KEYWORDS_WORKSHEET_NAME,
+                'label': KUWAIT_KEYWORDS_WORKSHEET_NAME
+            },
+            {
+                'name': CRIMINAL_CONVICTION_WORKSHEET_NAME,
+                'label': 'Standard + Criminal Conviction'
             }
         ]
 
@@ -254,23 +338,29 @@ class CloudSync:
         """
 
         standard_sheet_name = GOOGLE_SHEETS_CONFIG['keywords_worksheet_name']
-        russian_sheet_name = RUSSIAN_KEYWORDS_WORKSHEET_NAME
+        kuwait_sheet_name = KUWAIT_KEYWORDS_WORKSHEET_NAME
+        criminal_conviction_sheet_name = CRIMINAL_CONVICTION_WORKSHEET_NAME
         worksheet_name = worksheet_name or standard_sheet_name
 
-        if worksheet_name == russian_sheet_name:
-            if self.russian_keywords_worksheet is None:
+        keyword_worksheets = {
+            kuwait_sheet_name: self.kuwait_keywords_worksheet,
+            criminal_conviction_sheet_name: self.criminal_conviction_worksheet,
+        }
+        if worksheet_name in keyword_worksheets:
+            keyword_worksheet = keyword_worksheets[worksheet_name]
+            if keyword_worksheet is None:
                 raise RuntimeError(
-                    f"'{russian_sheet_name}' is unavailable. Check the Google Sheets connection."
+                    f"'{worksheet_name}' is unavailable. Check the Google Sheets connection."
                 )
             try:
                 keywords = self._extract_active_keywords(
-                    self.russian_keywords_worksheet.get_all_values()
+                    keyword_worksheet.get_all_values()
                 )
-                print(f"Loaded {len(keywords)} keywords from '{russian_sheet_name}'")
+                print(f"Loaded {len(keywords)} keywords from '{worksheet_name}'")
                 return keywords
             except Exception as e:
                 raise RuntimeError(
-                    f"Could not read keywords from '{russian_sheet_name}': {str(e)}"
+                    f"Could not read keywords from '{worksheet_name}': {str(e)}"
                 ) from e
 
         if worksheet_name != standard_sheet_name:
