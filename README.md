@@ -10,7 +10,7 @@
 
 ## 📋 Overview
 
-The **Risk Search Tool** is an enterprise-grade application designed for KPMG teams to perform comprehensive risk assessments on companies. It automates Google searches using a selected keyword worksheet and maintains a centralized database of all searches in Google Sheets.
+The **Risk Search Tool** is an enterprise-grade application designed for a Company to perform comprehensive risk assessments on companies. It automates Google searches using a selected keyword worksheet and maintains a centralized database of all searches in Google Sheets.
 
 ### ✨ Key Features
 
